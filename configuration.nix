@@ -153,7 +153,7 @@
     python3Packages.pip
     vscode
     google-chrome
-    aider # Native terminal AI pair-programming agent engine
+    aider-chat # Native terminal AI pair-programming agent engine
   ];
 
   system.stateVersion = "24.11";
