@@ -75,7 +75,7 @@
   # ---------------------------------------------------------------------
   services.ollama = {
     enable = true;
-    acceleration = "cuda"; # Native 16GB RTX 3080 parallel computation
+    package = pkgs.ollama-cuda; # Modern nixpkgs-unstable syntax for NVIDIA cards
     environmentVariables = {
       OLLAMA_FLASH_ATTENTION = "1";   # Cuts context KV cache footprint cleanly in half
       OLLAMA_NUM_PARALLEL = "1";      # Single-prompt prioritization, blocks memory spikes
