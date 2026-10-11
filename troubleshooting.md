@@ -98,5 +98,11 @@ Nix takes a cryptographic snapshot (the NAR hash) of your directory to build you
 The ultimate goal of NixOS is to allow you to back up your entire operating system as code. By forcing your configurations into Git, you can push your changes straight to [GitHub](https://github.com/). If a system update ever breaks your computer, you can look at your Git history, see exactly what changed, and roll back down to the exact block of code.
 Did the commit fix clear out the hash mismatch and let your installation finalize successfully? Let me know if you are ready for the reboot steps!
 
+---
+
+IMPORTANT !!!! - this is the way to clone, and git is important for the flake !!!
+
+[nixos@nixos:/mnt/etc/nixos]$ sudo git clone  https://github.com/romancerny/nixos-DeepSeek-R1-Distill-Llama-70B-Quantized.git .
+
 
 
