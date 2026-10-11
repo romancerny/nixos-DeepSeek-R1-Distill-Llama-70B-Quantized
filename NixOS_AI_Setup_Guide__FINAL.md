@@ -106,7 +106,7 @@ vi configuration.nix
   # Enable experimental Flakes mechanics
   nix.settings.experimental-features = [ "nix-command" "flakes" ];
 
-  # Permit proprietary packages (NVIDIA drivers)
+  # Permit proprietary packages (NVIDIA drivers, Discord, Google Chrome)
   nixpkgs.config.allowUnfree = true;
 
   # Core Bootloader Setup (modern UEFI)
@@ -182,6 +182,17 @@ vi configuration.nix
   };
 
   # ---------------------------------------------------------------------
+  # 🖥️ VIRTUALIZATION & BACKGROUND DAEMONS
+  # ---------------------------------------------------------------------
+  # Required system configurations for Virtual Machine Manager
+  virtualisation.libvirtd.enable = true;
+  programs.virt-manager.enable = true;
+
+  # Required background Tor daemon service
+  services.tor.enable = true;
+  services.tor.client.enable = true;
+
+  # ---------------------------------------------------------------------
   # 🔒 FIREWALL & LAN NETWORK ISOLATION SANDBOX (Strict Safety)
   # ---------------------------------------------------------------------
   # Any process whose PRIMARY group is ai-sandbox gets full public internet,
@@ -220,7 +231,8 @@ vi configuration.nix
     roman = {
       isNormalUser = true;
       description = "Roman System Administrator";
-      extraGroups = [ "networkmanager" "wheel" "video" ]; # 'wheel' grants sudo
+      # Added "libvirtd" to extraGroups so Roman can manage virtual machines without root
+      extraGroups = [ "networkmanager" "wheel" "video" "libvirtd" ]; 
       shell = pkgs.bash;
       initialPassword = "ChangeThisPassword123!"; # Change immediately on first login
     };
@@ -233,14 +245,15 @@ vi configuration.nix
       # because the iptables --gid-owner match only sees a process's primary
       # group. This single line is what makes the LAN firewall actually apply.
       group = "ai-sandbox";
-      # Deliberately NOT in 'wheel' — zero sudo capability.
+      # Deliberately NOT in 'wheel' or 'libvirtd' — zero administrative or VM escape capability.
       shell = pkgs.bash;
       initialPassword = "ChangeThisPassword456!"; # Change immediately on first login
     };
   };
 
-  # Core developer packages available to all users
+  # Core developer packages and requested desktop apps available to all users
   environment.systemPackages = with pkgs; [
+    # Existing Developer Core
     git
     vim
     wget
@@ -251,7 +264,18 @@ vi configuration.nix
     python3Packages.pip
     vscode
     google-chrome
-    aider-chat # Native terminal AI pair-programming agent engine
+    aider-chat 
+
+    # Newly Added Desktop Environments & Apps
+    wezterm                 # Terminal emulator
+    gossip                  # Nostr desktop client
+    discord                 # Messaging platform
+    virt-manager            # GUI frontend for local KVM/QEMU virtual machines
+    sparrow                 # Bitcoin wallet manager
+    gimp                    # GNU Image Manipulation Program
+    beebeep                 # Secure LAN messenger
+    keepassxc               # Local encrypted password vault
+    tor-browser             # Tor browser bundled package with configured onion routing
   ];
 
   system.stateVersion = "24.11";
