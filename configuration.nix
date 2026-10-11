@@ -177,7 +177,7 @@
     gimp                    # GNU Image Manipulation Program
     beebeep                 # Secure LAN messenger
     keepassxc               # Local encrypted password vault
-    tor-browser-bundle-bin  # Tor browser bundled package with configured onion routing
+    tor-browser             # Tor browser bundled package with configured onion routing
   ];
 
   system.stateVersion = "24.11";
