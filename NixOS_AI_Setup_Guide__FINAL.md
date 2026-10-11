@@ -336,6 +336,30 @@ sudo nixos-install --flake /mnt/etc/nixos#beast-kf
 ```
 *This step takes a while — it downloads and builds your NVIDIA drivers, CUDA stack, desktop environment, and the 48GB swap structure. When it finishes without errors:*
 
+
+#### Step 3.4: 🛠️ Final Steps: Post-Installation Clean Up
+
+Before flipping the power switch, you must gracefully detach your physical partitions from the active live installer runtime to ensure no files get corrupted. Run these final commands:
+
+##### 3.4.1. Step completely outside the mounted directory tree
+```bash
+cd ~
+```
+
+##### 3.4.2. Force all cached data in RAM to write out to your physical hard drive
+```bash
+sync
+```
+
+##### 3.4.3. Recursively unmount all target installation partitions safely
+```bash
+sudo umount -R /mnt
+```
+
+#### Step 3.5: 🚀 Booting Into Your Secure AI Workstation
+
+Now you are clear to restart your machine:
+
 ```bash
 sudo reboot
 ```
