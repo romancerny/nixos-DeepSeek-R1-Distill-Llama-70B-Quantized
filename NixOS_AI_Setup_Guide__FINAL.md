@@ -424,6 +424,13 @@ Now you are clear to restart your machine:
 ```bash
 sudo reboot
 ```
+
+or
+
+```bash
+sudo systemctl reboot -i
+```
+
 Remove the USB drive when the screen goes black. Your laptop now boots into your personal AI-native NixOS.
 
 ---
