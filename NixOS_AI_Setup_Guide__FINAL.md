@@ -303,23 +303,21 @@ Open a terminal inside the live environment and run:
 
 ```bash
 # Generate the hardware description unique to your Clevo machine
-####sudo nixos-generate-config --root /mnt # this was wrong, so did below instead, BTW !!!! dont forget to update the .nix files to reflect what we have in the github now. DONE!
-sudo nixos-generate-config --dir /mnt/etc/nixos
+sudo nixos-generate-config --dir /mnt/etc
 ```
-This creates `/mnt/etc/nixos/hardware-configuration.nix` — the missing third file of your repo.
+This creates `/mnt/etc/hardware-configuration.nix` — the missing third file of your repo.
 
 ### Step 3.2: Merge With Your GitHub Configuration
 ```bash
-# Work from the live session's home directory
-cd ~
+# Work from the NixOS directory
+cd /mnt/etc/nixos/
 
 # Pull down your private repo (use your Personal Access Token as the password)
-git clone https://github.com/YOUR_GITHUB_USERNAME/nixos-config.git system-files
+sudo git clone https://github.com/YOUR_GITHUB_USERNAME/nixos-config.git .
 
 # Complete the repo by adding the freshly generated hardware file,
 # and push it so the GitHub copy becomes the permanent, complete brain
-cp /mnt/etc/nixos/hardware-configuration.nix system-files/
-cd system-files
+sudo cp /mnt/etc/hardware-configuration.nix /mnt/etc/nixos/
 git add hardware-configuration.nix
 git commit -m "feat: add auto-generated hardware configuration for Clevo PC5x_7xHP_HR_HS"
 git push
@@ -336,27 +334,77 @@ sudo nixos-install --flake /mnt/etc/nixos#beast-kf
 ```
 *This step takes a while — it downloads and builds your NVIDIA drivers, CUDA stack, desktop environment, and the 48GB swap structure. When it finishes without errors:*
 
+NB: if the above command fails, do the following:
 
-#### Step 3.4: 🛠️ Final Steps: Post-Installation Clean Up
+### Step 3.4: ONLY ESECUTE BELOW ON FAILURE, NOT OTHERWISE !!!
+
+## Step 3.4.1: Re-mount Your Real Hard Drive Partitions
+We need to ensure your physical hard drive partitions are mounted correctly to /mnt.
+
+   1. Run lsblk to view your actual partitions. Identify your main Linux system partition (e.g., /dev/nvme0n1p2 or /dev/sda2, usually formatted as ext4, btrfs, or zfs) and your EFI boot partition (e.g., /dev/nvme0n1p1 or /dev/sda1, formatted as vfat).
+   2. Unmount the incorrect paths from your current session:
+   
+   sudo umount /mnt/boot 2>/dev/null
+   sudo umount -R /mnt 2>/dev/null
+   
+   3. Mount your real Linux system partition to /mnt (replace /dev/nvme0n1p2 with your actual Linux partition):
+   
+   sudo mount /dev/nvme0n1p2 /mnt
+   
+   4. Create the correct boot directory and mount your real EFI boot partition to it (replace /dev/nvme0n1p1 with your actual EFI partition):
+   
+   sudo mkdir -p /mnt/boot
+   sudo mount /dev/nvme0n1p1 /mnt/boot
+   
+   
+## Step 3.4.2: Regenerate the Hardware Map
+Now that the real physical disks are sitting underneath /mnt, the generator will scan your storage controllers and partition UUIDs perfectly.
+
+   1. Force a clean generation matching your physical hard drive structure:
+   
+   sudo nixos-generate-config --root /mnt
+   
+   2. Verify that it worked by viewing the file:
+   
+   cat /mnt/etc/nixos/hardware-configuration.nix
+   
+   Your fileSystems."/" block should now display an actual physical drive UUID with a type like ext4 or btrfs, and fileSystems."/boot" should show your EFI drive path.
+
+## Step 3.4.3: Sync and Stage with Git
+Because you wiped out the configuration directories under /mnt during re-mounting, make sure your customized configuration.nix and flake.nix are present in /mnt/etc/nixos/. If they were lost during the unmount process, re-copy them from your cloning phase or modify them quickly to match what we fixed earlier.
+Once your files are verified inside /mnt/etc/nixos/, track them with Git:
+
+cd /mnt/etc/nixos
+sudo git init
+sudo git add hardware-configuration.nix configuration.nix flake.nix
+
+## Step 3.4.4: Finalize the Installation
+Run the installer script:
+
+sudo nixos-install --flake /mnt/etc/nixos#beast-kf
+
+If nixos-generate-config still outputs tmpfs blocks or if you are unsure which partition targets are correct, please run lsblk and paste the layout here. I can tell you exactly which partitions to mount.
+
+#### Step 3.5: 🛠️ Final Steps: Post-Installation Clean Up
 
 Before flipping the power switch, you must gracefully detach your physical partitions from the active live installer runtime to ensure no files get corrupted. Run these final commands:
 
-##### 3.4.1. Step completely outside the mounted directory tree
+##### 3.5.1. Step completely outside the mounted directory tree
 ```bash
 cd ~
 ```
 
-##### 3.4.2. Force all cached data in RAM to write out to your physical hard drive
+##### 3.5.2. Force all cached data in RAM to write out to your physical hard drive
 ```bash
 sync
 ```
 
-##### 3.4.3. Recursively unmount all target installation partitions safely
+##### 3.5.3. Recursively unmount all target installation partitions safely
 ```bash
 sudo umount -R /mnt
 ```
 
-#### Step 3.5: 🚀 Booting Into Your Secure AI Workstation
+#### Step 3.6: 🚀 Booting Into Your Secure AI Workstation
 
 Now you are clear to restart your machine:
 
