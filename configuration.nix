@@ -234,7 +234,7 @@ in
     polarity = "dark";
     
     targets.gnome.enable = true;
-    targets.wezterm.enable = true; # Tells Stylix to themes downstream user modules natively!
+    # ❌ REMOVED targets.wezterm.enable from here to fix the evaluation error
 
     # Look up the matching wallpaper asset dynamically from our local folder
     image = ./. + "/wallpapers/${activeTheme}.png";
