@@ -75,9 +75,16 @@ vi configuration.nix
 ```
 *Same `vi` procedure: `i`, paste, `Esc`, `:wq`, `Enter`.* (configuration.nix from this repo)
 
+### Step 1.5: Create the home Nix File (`home.nix`)
+
+```bash
+vi home.nix
+```
+*Same `vi` procedure: `i`, paste, `Esc`, `:wq`, `Enter`.* (home.nix from this repo)
+
 > **Note on `hardware-configuration.nix`:** you do **not** create this file by hand. It describes your exact disk and kernel modules and is auto-generated on the laptop during installation (Phase 3), then copied into this repo. The repo will be complete after Phase 3.
 
-### Step 1.5: Push the Brain to GitHub
+### Step 1.6: Push the Brain to GitHub
 Back in the Ubuntu terminal (still inside `~/nixos-config`):
 
 ```bash
