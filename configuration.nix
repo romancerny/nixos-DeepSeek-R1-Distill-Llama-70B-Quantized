@@ -236,8 +236,9 @@ in
     targets.gnome.enable = true;
     # ❌ REMOVED targets.wezterm.enable from here to fix the evaluation error
 
-    # Look up the matching wallpaper asset dynamically from our local folder
-    image = ./. + "/wallpapers/${activeTheme}.png";
+    # 🌟 FIXED MAPPING: Uses schemeName instead of activeTheme to match the true file names!
+    # This correctly evaluates to ./wallpapers/gruvbox-dark-hard.png
+    image = ./. + "/wallpapers/${schemeName}.png";
 
     # Dynamic base16 scheme path generation
     base16Scheme = "${pkgs.base16-schemes}/share/themes/${schemeName}.yaml";
