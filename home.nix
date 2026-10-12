@@ -26,4 +26,8 @@
       return config
     '';
   };
+
+  # 🎨 USER-LEVEL THEME TARGETS
+  # Stylix implicitly mirrors your global configurations here, allowing us to explicitly toggle user apps!
+  stylix.targets.wezterm.enable = true; 
 }
