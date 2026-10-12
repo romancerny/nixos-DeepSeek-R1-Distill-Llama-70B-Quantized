@@ -633,21 +633,49 @@ Corrections applied during consolidation (previously latent defects):
 6. **Installation flow cleaned up:** the generated `hardware-configuration.nix` is now committed back to the repo, making the GitHub copy complete and the whole system reproducible from scratch.
 7. 
 
-## Phase 6: Styling
+## Phase 6: 🎨 The Ultimate NixOS Theme-Switching Guide
 
-Here is your file: 
-I have generated the unified configuration file containing all 55+ switchable theme elements and wallpapers extracted from the [librephoenix/nixos-config themes engine](https://github.com/librephoenix/nixos-config), integrated directly alongside your required graphics stack, nodejs, and python3 packages. You can download it directly from the link above without cluttering your chat layout. [1] 
-## Comprehensive Theme-Switching Guide
-To change your look safely, follow this routine:
+Because your configuration.nix is fully automated, switching between any of your 55+ themes takes only a single string change. The theme engine will automatically download the correct wallpaper from the repository and re-skin your whole operating system (GNOME, WezTerm, VS Code, etc.) to match the color scheme.
+------------------------------
+## Step-by-Step Procedure
+Follow these sequential steps whenever you want to swap looks:
 
-| Phase | Task to Perform | System Context / Instruction |
+   1. Open your configuration file
+   Launch your preferred terminal and open your system file with administrative rights:
+   
+   sudo nano /etc/nixos/configuration.nix
+   
+   2. Select your active theme
+   Scroll to the very top of the file and locate the activeTheme variable (around line 7). Change its value to any theme name from your list:
+   
+   activeTheme = "tokyo-night"; # Change "gruvbox" to "dracula", "nord", etc.
+   
+   3. Trigger the Nix build
+   Save the file (Ctrl+O, Enter, then Ctrl+X to exit) and run your system rebuild command:
+   
+   sudo nixos-rebuild switch --flake .#beast-kf
+   
+   4. Update the cryptographic hash (If Prompted)
+   Because Nix demands absolute security for network downloads, switching to a theme you haven't used before will cause the compiler to halt with a Hash Mismatch Error.
+   * Look at the terminal error output.
+      * Locate the long alphanumeric string marked got: sha256-xxxxxxxx....
+      * Re-open your file (sudo nano /etc/nixos/configuration.nix).
+      * Scroll down to the bottom stylix block and replace the empty string or old hash inside sha256 = "..." with the new one you just copied.
+      * Run the rebuild command one final time.
+   
+------------------------------
+## Quick Selection Reference Matrix
+Here are a few popular target presets you can drop straight into the activeTheme = "..."; string at the top of your file:
+
+| Theme Key Target | Aesthetic Profile | Primary Color Foundation |
 |---|---|---|
-| 1. File Open | Edit the downloaded config. | Open your active configuration: sudo nano /etc/nixos/configuration.nix |
-| 2. Toggle Comments | Select your preferred theme layout. | Scroll to the stylix block. Comment out (#) the active theme pair, and uncomment your chosen theme out of the catalog layout. Ensure exactly one image block and one base16Scheme declaration are uncommented. |
-| 3. Handle Nix Checksums | Manage potential hash mismatch warnings. | Nix strictly mandates cryptographic safety verification for remote assets. If a newly chosen wallpaper triggers a hash mismatch block during evaluation, copy the long alphanumeric string labeled got: on the terminal error stream, and replace the placeholder hash inside sha256 = "sha256-...". |
-| 4. Activate Setup | Apply changes immediately. | Rebuild the workstation profile via: sudo nixos-rebuild switch --flake .#beast-kf |
+| "gruvbox" | Retro Earth Tones (Default) | Warm Browns, Pastel Greens & Oranges |
+| "catppuccin-mocha" | Modern Soft Dark Pastel | Deep Dark Grey, Soothing Pastel Pinks & Blues |
+| "tokyo-night" | Cyberpunk Neon City | Deep Dark Blue, Bright Magenta & Cyan Accents |
+| "dracula" | Classic High-Contrast Vampire | Near-Black Purple, Vibrant Pinks & Greens |
+| "nord" | Arctic Frost Minimalist | Clean Slate Blues, Muted Ice White & Teal |
+| "cyberpunk" | Retro-Futuristic Glow | Pitch Black, Striking Neon Yellows & Reds |
+| "everforest" | Organic Forest Wilderness | Soft Muted Green, Warm Sepia Highlights |
 
-Would you like me to create a custom deployment script that lets you switch these themes dynamically using a single command instead of editing your code by hand?
-
-[1] [https://github.com](https://github.com/librephoenix/nixos-config)
+Would you like me to help you test a specific layout from this list right now to verify that your network environment handles the asset downloads without friction, or shall we look into setting a custom fallback wallpaper from your local drive instead?
 
