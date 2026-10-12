@@ -275,14 +275,11 @@ in
     polarity = "dark";
     
     targets.gnome.enable = true;
-    targets.wezterm.enable = true; # UNCOMMENTED: Automatically injects your activeTheme matrix scheme into WezTerm
+    targets.wezterm.enable = true; # Automatically injects your activeTheme matrix scheme into WezTerm
 
-    # Dynamic wallpaper generation matching the user selection matrix cleanly
-    image = pkgs.fetchurl {
-      url = "https://githubusercontent.com{activeTheme}.png";
-      # Nix will prompt for the correct hash on evaluation if the file switches
-      sha256 = ""; 
-    };
+    # Dynamic local path lookup referencing the local folder asset matrix.
+    # Nix evaluates relative paths natively, bypassing network fetch rules and sha256 checksum strings.
+    image = ./. + "/wallpapers/${activeTheme}.png";
 
     # Dynamic base16 scheme path generation
     base16Scheme = "${pkgs.base16-schemes}/share/themes/${schemeName}.yaml";
