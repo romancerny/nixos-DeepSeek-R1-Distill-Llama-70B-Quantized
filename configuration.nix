@@ -19,30 +19,22 @@
   networking.networkmanager.enable = true;
 
   # IMPORTANT SANDBOX DETAIL: use public DNS resolvers system-wide.
-  # Home DNS normally goes through the router (a LAN address), which the
-  # sandbox firewall drops for the ai-agent user. Public DNS means the
-  # sandboxed user never needs to touch the LAN for anything.
   networking.nameservers = [ "1.1.1.1" "9.9.9.9" ];
 
   time.timeZone = "Europe/London";
   i18n.defaultLocale = "en_GB.UTF-8";
 
-  # Desktop Environment (must match what you pick in the Phase 2 installer)
+  # Desktop Environment
   services.xserver.enable = true;
   services.displayManager.gdm.enable = true;
   services.desktopManager.gnome.enable = true;
-  # KDE Plasma alternative (if you chose Plasma in the installer, swap to these):
-  # services.displayManager.sddm.enable = true;
-  # services.desktopManager.plasma6.enable = true;
 
   # ---------------------------------------------------------------------
   # 🚂 MEMORY MATRIX: Overcoming the 64GB Hardware Boundary
   # ---------------------------------------------------------------------
-  # A 48GB NVMe swap block cushions the 70B model's KV context cache spillover
-  # and prevents Out-Of-Memory kernel panics during long coding sessions.
   swapDevices = [ {
     device = "/var/lib/swapfile";
-    size = 48 * 1024; # 48 Gigabytes (value is in Megabytes)
+    size = 48 * 1024; 
   } ];
 
   # ---------------------------------------------------------------------
@@ -54,12 +46,10 @@
   hardware.nvidia = {
     modesetting.enable = true;
     powerManagement.enable = false;
-    open = false; # Proprietary driver = maximum CUDA stability on this generation
+    open = false; 
     nvidiaSettings = true;
     package = config.boot.kernelPackages.nvidiaPackages.stable;
 
-    # Clevo hybrid-graphics bus IDs (verify with `lspci | grep -E 'VGA|3D'`
-    # after install; these are the standard layout for this chassis)
     prime = {
       offload = {
         enable = true;
@@ -75,52 +65,39 @@
   # ---------------------------------------------------------------------
   services.ollama = {
     enable = true;
-    package = pkgs.ollama-cuda; # Modern nixpkgs-unstable syntax for NVIDIA cards
+    package = pkgs.ollama-cuda; 
     environmentVariables = {
-      OLLAMA_FLASH_ATTENTION = "1";   # Cuts context KV cache footprint cleanly in half
-      OLLAMA_NUM_PARALLEL = "1";      # Single-prompt prioritization, blocks memory spikes
-      OLLAMA_CONTEXT_LENGTH = "16384"; # Prevents silent truncation of large code files
+      OLLAMA_FLASH_ATTENTION = "1";   
+      OLLAMA_NUM_PARALLEL = "1";      
+      OLLAMA_CONTEXT_LENGTH = "16384"; 
     };
   };
 
   # ---------------------------------------------------------------------
   # 🖥️ VIRTUALIZATION & BACKGROUND DAEMONS
   # ---------------------------------------------------------------------
-  # Required system configurations for Virtual Machine Manager
   virtualisation.libvirtd.enable = true;
   programs.virt-manager.enable = true;
 
-  # Required background Tor daemon service
   services.tor.enable = true;
   services.tor.client.enable = true;
 
   # ---------------------------------------------------------------------
   # 🔒 FIREWALL & LAN NETWORK ISOLATION SANDBOX (Strict Safety)
   # ---------------------------------------------------------------------
-  # Any process whose PRIMARY group is ai-sandbox gets full public internet,
-  # but every packet toward a private network range is rejected by the kernel.
   users.groups.ai-sandbox = {};
 
   networking.firewall = {
     enable = true;
     extraCommands = ''
-      # Flush the chain if it exists, otherwise create it (idempotent on reload)
       iptables -F AI_SANDBOX_CHAIN 2>/dev/null || iptables -N AI_SANDBOX_CHAIN
-
-      # Attach the chain once, at the top of the outbound path
       iptables -C OUTPUT -m owner --gid-owner ai-sandbox -j AI_SANDBOX_CHAIN 2>/dev/null || \
         iptables -I OUTPUT 1 -m owner --gid-owner ai-sandbox -j AI_SANDBOX_CHAIN
-
-      # 1. Allow loopback so the agent can reach the local Ollama server (127.0.0.1:11434)
       iptables -A AI_SANDBOX_CHAIN -o lo -j ACCEPT
-
-      # 2. Reject all outbound traffic to private/LAN infrastructure ranges
       iptables -A AI_SANDBOX_CHAIN -d 10.0.0.0/8 -j REJECT --reject-with icmp-net-prohibited
       iptables -A AI_SANDBOX_CHAIN -d 172.16.0.0/12 -j REJECT --reject-with icmp-net-prohibited
       iptables -A AI_SANDBOX_CHAIN -d 192.168.0.0/16 -j REJECT --reject-with icmp-net-prohibited
       iptables -A AI_SANDBOX_CHAIN -d 169.254.0.0/16 -j REJECT --reject-with icmp-net-prohibited
-
-      # 3. Allow everything else (the public internet)
       iptables -A AI_SANDBOX_CHAIN -j ACCEPT
     '';
   };
@@ -129,33 +106,26 @@
   # 👥 DUAL-USER PROFILE DEFINITIONS (Admin vs Unprivileged Isolation)
   # ---------------------------------------------------------------------
   users.users = {
-    # Primary Administrator Profile
     roman = {
       isNormalUser = true;
       description = "Roman System Administrator";
-      # Added "libvirtd" to extraGroups so Roman can manage virtual machines without root
       extraGroups = [ "networkmanager" "wheel" "video" "libvirtd" ]; 
       shell = pkgs.bash;
-      initialPassword = "ChangeThisPassword123!"; # Change immediately on first login
+      initialPassword = "ChangeThisPassword123!"; 
     };
 
-    # Isolated Unprivileged Worker Profile
     ai-agent = {
       isNormalUser = true;
       description = "Isolated AI Execution Worker";
-      # CRITICAL: ai-sandbox must be the PRIMARY group (not a supplementary one),
-      # because the iptables --gid-owner match only sees a process's primary
-      # group. This single line is what makes the LAN firewall actually apply.
       group = "ai-sandbox";
-      # Deliberately NOT in 'wheel' or 'libvirtd' — zero administrative or VM escape capability.
       shell = pkgs.bash;
-      initialPassword = "ChangeThisPassword456!"; # Change immediately on first login
+      initialPassword = "ChangeThisPassword456!"; 
     };
   };
 
   # Core developer packages and requested desktop apps available to all users
   environment.systemPackages = with pkgs; [
-    # Existing Developer Core
+    # Existing Developer Core & Requested Languages
     git
     vim
     wget
@@ -164,21 +134,47 @@
     gnumake
     python3
     python3Packages.pip
+    nodejs                  # <-- FIXED: Node.js and NPM are now permanently installed!
     vscode
     google-chrome
     aider-chat 
 
     # Newly Added Desktop Environments & Apps
-    wezterm                 # Terminal emulator
-    gossip                  # Nostr desktop client
-    discord                 # Messaging platform
-    virt-manager            # GUI frontend for local KVM/QEMU virtual machines
-    sparrow                 # Bitcoin wallet manager
-    gimp                    # GNU Image Manipulation Program
-    beebeep                 # Secure LAN messenger
-    keepassxc               # Local encrypted password vault
-    tor-browser             # Tor browser bundled package with configured onion routing
+    wezterm                 
+    gossip                  
+    discord                 
+    virt-manager            
+    sparrow                 
+    gimp                    
+    beebeep                 
+    keepassxc               
+    tor-browser             
   ];
+
+  # ---------------------------------------------------------------------
+  # 🎨 SWITCHABLE THEME MECHANICS (LibrePhoenix/Stylix Core Setup)
+  # ---------------------------------------------------------------------
+  stylix = {
+    enable = true;
+    
+    # 🌆 Wallpaper: Simply change this path to swap your background image!
+    # Tip: You can fetch a cool wallpaper locally or point it to a file.
+    image = pkgs.fetchurl {
+      url = "https://githubusercontent.com";
+      sha256 = "sha256-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="; # Run configuration once to get the exact hash if broken
+    };
+
+    # 🎨 Color Schemes: Switch themes instantly here by changing the theme scheme.
+    # Examples from base16: "gruvbox-dark-hard", "dracula", "nord", "oceanic-next"
+    base16Scheme = "${pkgs.base16-schemes}/share/themes/gruvbox-dark-hard.yaml";
+
+    # Force dark appearance across GNOME and applications
+    polarity = "dark";
+    
+    # Automatically manages styles for your environments
+    targets.gnome.enable = true;
+    targets.wezterm.enable = true;
+  };
 
   system.stateVersion = "24.11";
 }
