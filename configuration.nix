@@ -259,7 +259,7 @@ in
   
       -- Aesthetic and functional configurations matching the librephoenix setup
       config.hide_tab_bar_if_only_one_tab = true
-      config.color_scheme = 'Catppuccin Mocha'
+      -- config.color_scheme = 'Catppuccin Mocha' -- Commented out: Theme automation handled dynamically by Stylix
       config.window_background_opacity = 0.9
       config.window_decorations = "RESIZE"
   
@@ -275,7 +275,7 @@ in
     polarity = "dark";
     
     targets.gnome.enable = true;
-    # targets.wezterm.enable = true;
+    targets.wezterm.enable = true; # UNCOMMENTED: Automatically injects your activeTheme matrix scheme into WezTerm
 
     # Dynamic wallpaper generation matching the user selection matrix cleanly
     image = pkgs.fetchurl {
