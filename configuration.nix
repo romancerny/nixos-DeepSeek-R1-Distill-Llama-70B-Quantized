@@ -221,7 +221,7 @@ in
 
   # Core developer packages available to all users
   environment.systemPackages = with pkgs; [
-    git vim wget curl tmux gnumake python3 python3Packages.pip nodejs                  
+    git vim wget htop curl tmux gnumake python3 python3Packages.pip nodejs                  
     vscode google-chrome aider-chat gossip discord virt-manager sparrow                    
     gimp beebeep keepassxc tor-browser
   ];
