@@ -643,17 +643,23 @@ Follow these sequential steps whenever you want to swap looks:
    1. Open your configuration file
    Launch your preferred terminal and open your system file with administrative rights:
    
+```bash
    sudo nano /etc/nixos/configuration.nix
+   ```
    
    2. Select your active theme
    Scroll to the very top of the file and locate the activeTheme variable (around line 7). Change its value to any theme name from your list:
    
+```bash
    activeTheme = "tokyo-night"; # Change "gruvbox" to "dracula", "nord", etc.
+   ```
    
    3. Trigger the Nix build
    Save the file (Ctrl+O, Enter, then Ctrl+X to exit) and run your system rebuild command:
    
+```bash
    sudo nixos-rebuild switch --flake .#beast-kf
+   ```
    
    4. Update the cryptographic hash (If Prompted)
    Because Nix demands absolute security for network downloads, switching to a theme you haven't used before will cause the compiler to halt with a Hash Mismatch Error.
@@ -685,21 +691,25 @@ Yes, you do need to update or refresh your flake context, but only once to pull 
 Because we added a completely new external input to your architecture (github:danth/stylix), your current flake.lock file does not yet know how to find it or verify its security signatures.
 Follow these step-by-step actions to download the styling code and apply your setup without encountering evaluation errors:
 
-   1. Update your Flake input lockfile
-   Navigate to your project setup directory and run this command. This tells Nix to read your new flake.nix file, fetch the stylix repository source code, and lock down its exact version:
-   
-   nix flake update
-   
-   2. Add untracked files to Git (Mandatory if inside a Git Repository)
+### 1. Add untracked files to Git (Mandatory if inside a Git Repository)
    If your directory /etc/nixos/ or ~/_/pprgb is managed by Git, Nix flakes will completely ignore your new configuration files unless they are tracked. Ensure they are staged:
    
+```bash
    git add flake.nix configuration.nix
+   ```
    
-   3. Rebuild your workstation configuration
+### 2. Update your Flake input lockfile
+   Navigate to your project setup directory and run this command. This tells Nix to read your new flake.nix file, fetch the stylix repository source code, and lock down its exact version:
+   
+```bash
+   nix flake update
+   ```
+   
+### 3. Rebuild your workstation configuration
    With the locks successfully updated, trigger the installation profile to apply your theme:
    
+```bash
    sudo nixos-rebuild switch --flake .#beast-kf
-   
-   
-Did the nix flake update command download the packaging blocks successfully, or did you hit a network access block inside your workstation sandbox environment?
+```
+  
 
