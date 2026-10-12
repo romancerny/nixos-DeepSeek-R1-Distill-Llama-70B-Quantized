@@ -219,53 +219,12 @@ in
     };
   };
 
-  # Core developer packages and requested desktop apps available to all users
+  # Core developer packages available to all users
   environment.systemPackages = with pkgs; [
-    git
-    vim
-    wget
-    curl
-    tmux
-    gnumake
-    python3
-    python3Packages.pip
-    nodejs                  
-    vscode
-    google-chrome
-    aider-chat 
-
-    # Newly Added Desktop Environments & Apps
-    gossip                  
-    discord                 
-    virt-manager            
-    sparrow                 
-    gimp                    
-    beebeep                 
-    keepassxc               
-    tor-browser
-    # wezterm # commented - managed by module system below
+    git vim wget curl tmux gnumake python3 python3Packages.pip nodejs                  
+    vscode google-chrome aider-chat gossip discord virt-manager sparrow                    
+    gimp beebeep keepassxc tor-browser
   ];
-
-  programs.wezterm = {
-    enable = true;
-    # We use the extraConfig parameter to append the Lua settings directly
-    extraConfig = ''
-      local wezterm = require 'wezterm'
-      local config = wezterm.config_builder()
-  
-      -- CRITICAL FIX: Forces XWayland to prevent the tiny, unresizable window glitch on Wayland
-      config.enable_wayland = false
-      config.front_end = "WebGpu"
-  
-      -- Aesthetic and functional configurations matching the librephoenix setup
-      config.hide_tab_bar_if_only_one_tab = true
-      -- config.color_scheme = 'Catppuccin Mocha' -- Commented out: Theme automation handled dynamically by Stylix
-      config.window_background_opacity = 0.9
-      config.window_decorations = "RESIZE"
-  
-      return config
-    '';
-  };
 
   # ---------------------------------------------------------------------
   # 🎨 MODULAR THEMING SUBSYSTEM (Stylix Core Integration)
@@ -275,10 +234,9 @@ in
     polarity = "dark";
     
     targets.gnome.enable = true;
-    targets.wezterm.enable = true; # Automatically injects your activeTheme matrix scheme into WezTerm
+    targets.wezterm.enable = true; # Tells Stylix to themes downstream user modules natively!
 
-    # Dynamic local path lookup referencing the local folder asset matrix.
-    # Nix evaluates relative paths natively, bypassing network fetch rules and sha256 checksum strings.
+    # Look up the matching wallpaper asset dynamically from our local folder
     image = ./. + "/wallpapers/${activeTheme}.png";
 
     # Dynamic base16 scheme path generation
