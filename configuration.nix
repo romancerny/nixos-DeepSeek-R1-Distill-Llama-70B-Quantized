@@ -6,7 +6,7 @@ let
   # Change this single string to ANY folder/theme name in the catalog!
   # Examples: "gruvbox", "catppuccin-mocha", "tokyo-night", "dracula", "nord", "cyberpunk"
   # ---------------------------------------------------------------------
-  activeTheme = "gruvbox"; 
+  activeTheme = "miramare"; 
 
   # Comprehensive mapping engine that connects all 55+ themes to their base16 yaml names
   themeSchemeMap = {
