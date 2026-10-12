@@ -254,7 +254,7 @@ in
     polarity = "dark";
     
     targets.gnome.enable = true;
-    targets.wezterm.enable = true;
+    # targets.wezterm.enable = true;
 
     # Dynamic wallpaper generation matching the user selection matrix cleanly
     image = pkgs.fetchurl {
