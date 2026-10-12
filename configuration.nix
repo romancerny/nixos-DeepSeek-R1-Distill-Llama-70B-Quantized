@@ -3,24 +3,92 @@
 let
   # ---------------------------------------------------------------------
   # 🎨 THEME AUTOMATION MATRIX
-  # Change this single string to ANY folder name in the librephoenix themes repo!
-  # Popular options: "gruvbox", "catppuccin-mocha", "tokyonight", "dracula", "nord", "cyberpunk", "oceanic-next"
+  # Change this single string to ANY folder/theme name in the catalog!
+  # Examples: "gruvbox", "catppuccin-mocha", "tokyo-night", "dracula", "nord", "cyberpunk"
   # ---------------------------------------------------------------------
   activeTheme = "gruvbox"; 
 
-  # Mapping engine that connects the theme name to the base16 scheme file name
+  # Comprehensive mapping engine that connects all 55+ themes to their base16 yaml names
   themeSchemeMap = {
-    "gruvbox"          = "gruvbox-dark-hard";
-    "catppuccin-mocha" = "catppuccin-mocha";
-    "tokyonight"       = "tokyo-night";
-    "dracula"          = "dracula";
-    "nord"             = "nord";
-    "cyberpunk"        = "cyberpunk";
-    "oceanic-next"     = "oceanic-next";
-    "rose-pine"        = "rose-pine";
-    "everforest"       = "everforest";
-    "sweet-barbaro"    = "sweet-barbaro";
-    # Add any extra custom mappings here if the folder name differs from the yaml name
+    "abyss"                  = "abyss";
+    "amiga"                  = "amiga";
+    "aperitive"              = "aperitive";
+    "apple-classic"          = "apple-classic";
+    "ashes"                  = "ashes";
+    "atarist"                = "atarist";
+    "atelier-cave"           = "atelier-cave";
+    "atelier-dune"           = "atelier-dune";
+    "atelier-estuary"        = "atelier-estuary";
+    "atelier-forest"         = "atelier-forest";
+    "atelier-heath"          = "atelier-heath";
+    "atelier-lakeside"       = "atelier-lakeside";
+    "atelier-plateau"        = "atelier-plateau";
+    "atelier-savanna"        = "atelier-savanna";
+    "atelier-seaside"        = "atelier-seaside";
+    "atelier-sulphurpool"    = "atelier-sulphurpool";
+    "ayu-dark"               = "ayu-dark";
+    "ayu-light"              = "ayu-light";
+    "ayu-mirage"             = "ayu-mirage";
+    "bespin"                 = "bespin";
+    "black-metal"            = "black-metal";
+    "catppuccin-frappe"      = "catppuccin-frappe";
+    "catppuccin-latte"       = "catppuccin-latte";
+    "catppuccin-macchiato"   = "catppuccin-macchiato";
+    "catppuccin-mocha"      = "catppuccin-mocha";
+    "chalk"                  = "chalk";
+    "classic-dark"           = "classic-dark";
+    "classic-light"          = "classic-light";
+    "codeschool"             = "codeschool";
+    "cyberpunk"              = "cyberpunk";
+    "decaf"                  = "decaf";
+    "default-dark"           = "default-dark";
+    "default-light"          = "default-light";
+    "dracula"                = "dracula";
+    "eighties"               = "eighties";
+    "ember"                  = "ember";
+    "espresso"               = "espresso";
+    "everforest"             = "everforest";
+    "everforest-light"       = "everforest-light";
+    "flat"                   = "flat";
+    "forest"                 = "forest";
+    "github"                 = "github";
+    "google-dark"            = "google-dark";
+    "google-light"           = "google-light";
+    "gruvbox"                = "gruvbox-dark-hard";
+    "gruvbox-light"          = "gruvbox-light-medium";
+    "harmonic-dark"          = "harmonic-dark";
+    "hopscotch"              = "hopscotch";
+    "io"                     = "io";
+    "isotope"                = "isotope";
+    "marrakesh"              = "marrakesh";
+    "materia"                = "materia";
+    "mexico-light"           = "mexico-light";
+    "miramare"               = "miramare";
+    "mocha"                  = "mocha";
+    "monokai"                = "monokai";
+    "nord"                   = "nord";
+    "nord-light"             = "nord-light";
+    "ocean"                  = "ocean";
+    "oceanic-next"           = "oceanic-next";
+    "outrun"                 = "outrun";
+    "paraiso"                = "paraiso";
+    "railscasts"             = "railscasts";
+    "rose-pine"              = "rose-pine";
+    "rose-pine-moon"         = "rose-pine-moon";
+    "rose-pine-dawn"         = "rose-pine-dawn";
+    "shapeshifter"           = "shapeshifter";
+    "snazzy"                 = "snazzy";
+    "solarized-dark"         = "solarized-dark";
+    "solarized-light"        = "solarized-light";
+    "summerfruit-dark"       = "summerfruit-dark";
+    "summerfruit-light"      = "summerfruit-light";
+    "sweet-barbaro"          = "sweet-barbaro";
+    "tender"                 = "tender";
+    "tokyo-night"            = "tokyo-night";
+    "tomorrow"               = "tomorrow";
+    "tomorrow-night"         = "tomorrow-night";
+    "twilight"               = "twilight";
+    "zenburn"                = "zenburn";
   };
 
   # Helper to resolve the YAML name. Fallback to the theme name if not explicitly mapped.
@@ -52,7 +120,7 @@ in
   time.timeZone = "Europe/London";
   i18n.defaultLocale = "en_GB.UTF-8";
 
-  # Desktop Environment (must match what you pick in the Phase 2 installer)
+  # Desktop Environment
   services.xserver.enable = true;
   services.displayManager.gdm.enable = true;
   services.desktopManager.gnome.enable = true;
@@ -62,7 +130,7 @@ in
   # ---------------------------------------------------------------------
   swapDevices = [ {
     device = "/var/lib/swapfile";
-    size = 48 * 1024; # 48 Gigabytes (value is in Megabytes)
+    size = 48 * 1024; 
   } ];
 
   # ---------------------------------------------------------------------
@@ -74,7 +142,7 @@ in
   hardware.nvidia = {
     modesetting.enable = true;
     powerManagement.enable = false;
-    open = false; # Proprietary driver = maximum CUDA stability on this generation
+    open = false; 
     nvidiaSettings = true;
     package = config.boot.kernelPackages.nvidiaPackages.stable;
 
@@ -93,11 +161,11 @@ in
   # ---------------------------------------------------------------------
   services.ollama = {
     enable = true;
-    package = pkgs.ollama-cuda; # Modern nixpkgs-unstable syntax for NVIDIA cards
+    package = pkgs.ollama-cuda; 
     environmentVariables = {
-      OLLAMA_FLASH_ATTENTION = "1";   # Cuts context KV cache footprint cleanly in half
-      OLLAMA_NUM_PARALLEL = "1";      # Single-prompt prioritization, blocks memory spikes
-      OLLAMA_CONTEXT_LENGTH = "16384"; # Prevents silent truncation of large code files
+      OLLAMA_FLASH_ATTENTION = "1";   
+      OLLAMA_NUM_PARALLEL = "1";      
+      OLLAMA_CONTEXT_LENGTH = "16384"; 
     };
   };
 
@@ -107,7 +175,6 @@ in
   virtualisation.libvirtd.enable = true;
   programs.virt-manager.enable = true;
 
-  # Required background Tor daemon service
   services.tor.enable = true;
   services.tor.client.enable = true;
 
@@ -132,7 +199,7 @@ in
   };
 
   # ---------------------------------------------------------------------
-  # 👥 DUAL-USER PROFILE DEFINITIONS (Admin vs Unprivileged Isolation)
+  # 👥 DUAL-USER PROFILE DEFINITIONS
   # ---------------------------------------------------------------------
   users.users = {
     roman = {
@@ -154,7 +221,6 @@ in
 
   # Core developer packages and requested desktop apps available to all users
   environment.systemPackages = with pkgs; [
-    # Existing Developer Core & Languages
     git
     vim
     wget
@@ -163,7 +229,7 @@ in
     gnumake
     python3
     python3Packages.pip
-    nodejs                  # Installed alongside Python as requested
+    nodejs                  
     vscode
     google-chrome
     aider-chat 
@@ -187,14 +253,13 @@ in
     enable = true;
     polarity = "dark";
     
-    # Target systems automatically generated across environments
     targets.gnome.enable = true;
     targets.wezterm.enable = true;
 
-    # Dynamic image resolution: Fetches the background asset directly based on the active theme
+    # Dynamic wallpaper generation matching the user selection matrix cleanly
     image = pkgs.fetchurl {
       url = "https://githubusercontent.com{activeTheme}.png";
-      # Setting sha256 to an empty string tells Nix to compute the cryptographic verification check dynamically
+      # Nix will prompt for the correct hash on evaluation if the file switches
       sha256 = ""; 
     };
 
