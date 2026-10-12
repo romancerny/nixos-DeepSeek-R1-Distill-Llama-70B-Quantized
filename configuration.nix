@@ -1,5 +1,33 @@
 { config, pkgs, lib, ... }:
 
+let
+  # ---------------------------------------------------------------------
+  # 🎨 THEME AUTOMATION MATRIX
+  # Change this single string to ANY folder name in the librephoenix themes repo!
+  # Popular options: "gruvbox", "catppuccin-mocha", "tokyonight", "dracula", "nord", "cyberpunk", "oceanic-next"
+  # ---------------------------------------------------------------------
+  activeTheme = "gruvbox"; 
+
+  # Mapping engine that connects the theme name to the base16 scheme file name
+  themeSchemeMap = {
+    "gruvbox"          = "gruvbox-dark-hard";
+    "catppuccin-mocha" = "catppuccin-mocha";
+    "tokyonight"       = "tokyo-night";
+    "dracula"          = "dracula";
+    "nord"             = "nord";
+    "cyberpunk"        = "cyberpunk";
+    "oceanic-next"     = "oceanic-next";
+    "rose-pine"        = "rose-pine";
+    "everforest"       = "everforest";
+    "sweet-barbaro"    = "sweet-barbaro";
+    # Add any extra custom mappings here if the folder name differs from the yaml name
+  };
+
+  # Helper to resolve the YAML name. Fallback to the theme name if not explicitly mapped.
+  schemeName = if builtins.hasAttr activeTheme themeSchemeMap 
+               then themeSchemeMap.${activeTheme} 
+               else activeTheme;
+in
 {
   imports = [
     ./hardware-configuration.nix # Auto-generated during install (Phase 3)
@@ -24,7 +52,7 @@
   time.timeZone = "Europe/London";
   i18n.defaultLocale = "en_GB.UTF-8";
 
-  # Desktop Environment
+  # Desktop Environment (must match what you pick in the Phase 2 installer)
   services.xserver.enable = true;
   services.displayManager.gdm.enable = true;
   services.desktopManager.gnome.enable = true;
@@ -34,7 +62,7 @@
   # ---------------------------------------------------------------------
   swapDevices = [ {
     device = "/var/lib/swapfile";
-    size = 48 * 1024; 
+    size = 48 * 1024; # 48 Gigabytes (value is in Megabytes)
   } ];
 
   # ---------------------------------------------------------------------
@@ -46,7 +74,7 @@
   hardware.nvidia = {
     modesetting.enable = true;
     powerManagement.enable = false;
-    open = false; 
+    open = false; # Proprietary driver = maximum CUDA stability on this generation
     nvidiaSettings = true;
     package = config.boot.kernelPackages.nvidiaPackages.stable;
 
@@ -65,11 +93,11 @@
   # ---------------------------------------------------------------------
   services.ollama = {
     enable = true;
-    package = pkgs.ollama-cuda; 
+    package = pkgs.ollama-cuda; # Modern nixpkgs-unstable syntax for NVIDIA cards
     environmentVariables = {
-      OLLAMA_FLASH_ATTENTION = "1";   
-      OLLAMA_NUM_PARALLEL = "1";      
-      OLLAMA_CONTEXT_LENGTH = "16384"; 
+      OLLAMA_FLASH_ATTENTION = "1";   # Cuts context KV cache footprint cleanly in half
+      OLLAMA_NUM_PARALLEL = "1";      # Single-prompt prioritization, blocks memory spikes
+      OLLAMA_CONTEXT_LENGTH = "16384"; # Prevents silent truncation of large code files
     };
   };
 
@@ -79,6 +107,7 @@
   virtualisation.libvirtd.enable = true;
   programs.virt-manager.enable = true;
 
+  # Required background Tor daemon service
   services.tor.enable = true;
   services.tor.client.enable = true;
 
@@ -125,7 +154,7 @@
 
   # Core developer packages and requested desktop apps available to all users
   environment.systemPackages = with pkgs; [
-    # Existing Developer Core & Requested Languages
+    # Existing Developer Core & Languages
     git
     vim
     wget
@@ -134,7 +163,7 @@
     gnumake
     python3
     python3Packages.pip
-    nodejs                  # <-- FIXED: Node.js and NPM are now permanently installed!
+    nodejs                  # Installed alongside Python as requested
     vscode
     google-chrome
     aider-chat 
@@ -152,28 +181,25 @@
   ];
 
   # ---------------------------------------------------------------------
-  # 🎨 SWITCHABLE THEME MECHANICS (LibrePhoenix/Stylix Core Setup)
+  # 🎨 MODULAR THEMING SUBSYSTEM (Stylix Core Integration)
   # ---------------------------------------------------------------------
   stylix = {
     enable = true;
-    
-    # 🌆 Wallpaper: Simply change this path to swap your background image!
-    # Tip: You can fetch a cool wallpaper locally or point it to a file.
-    image = pkgs.fetchurl {
-      url = "https://githubusercontent.com";
-      sha256 = "sha256-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="; # Run configuration once to get the exact hash if broken
-    };
-
-    # 🎨 Color Schemes: Switch themes instantly here by changing the theme scheme.
-    # Examples from base16: "gruvbox-dark-hard", "dracula", "nord", "oceanic-next"
-    base16Scheme = "${pkgs.base16-schemes}/share/themes/gruvbox-dark-hard.yaml";
-
-    # Force dark appearance across GNOME and applications
     polarity = "dark";
     
-    # Automatically manages styles for your environments
+    # Target systems automatically generated across environments
     targets.gnome.enable = true;
     targets.wezterm.enable = true;
+
+    # Dynamic image resolution: Fetches the background asset directly based on the active theme
+    image = pkgs.fetchurl {
+      url = "https://githubusercontent.com{activeTheme}.png";
+      # Setting sha256 to an empty string tells Nix to compute the cryptographic verification check dynamically
+      sha256 = ""; 
+    };
+
+    # Dynamic base16 scheme path generation
+    base16Scheme = "${pkgs.base16-schemes}/share/themes/${schemeName}.yaml";
   };
 
   system.stateVersion = "24.11";
