@@ -463,7 +463,7 @@ Follow these sequential steps whenever you want to swap looks:
       * Run the rebuild command one final time.
    
 ------------------------------
-## Quick Selection Reference Matrix
+### Quick Selection Reference Matrix
 Here are a few popular target presets you can drop straight into the activeTheme = "..."; string at the top of your file:
 
 | Theme Key Target | Aesthetic Profile | Primary Color Foundation |
@@ -476,7 +476,85 @@ Here are a few popular target presets you can drop straight into the activeTheme
 | "cyberpunk" | Retro-Futuristic Glow | Pitch Black, Striking Neon Yellows & Reds |
 | "everforest" | Organic Forest Wilderness | Soft Muted Green, Warm Sepia Highlights |
 
-Would you like me to help you test a specific layout from this list right now to verify that your network environment handles the asset downloads without friction, or shall we look into setting a custom fallback wallpaper from your local drive instead?
+### The Themes got inspired in the:
+
+https://github.com/librephoenix/nixos-config
+
+and the wallpapers were extracted using the following approach:
+
+   1. A plain, standalone image link pointing to a .png file representing the screenshot: [[https://githubusercontent.com]]
+   2. An explicit hyperlink descriptive pair pointing to the wallpaper image file using the custom text definition: [[https://...][Background Link]]
+
+## The Automated Theme Multi-Asset Downloader Script
+This robust, tailored bash script loops through the repository assets, parses both URL targets from the individual README.org files using the exact layout rules you provided, and streams the files down properly.
+Run this command inside your terminal at /etc/nixos/:
+
+#### 1. Clear out any legacy configurations and establish a clean asset tree
+```bash
+
+sudo rm -rf wallpapers
+sudo mkdir -p wallpapers
+```
+
+#### 2. Pull down the clean target source repository tree into a temporary environment workspace
+```bash
+git clone --depth 1 https://github.com /tmp/librephoenix-source
+```
+
+#### 3. Enter the target themes asset catalog folder
+```bash
+cd /tmp/librephoenix-source/modules/themes
+```
+
+# 4. Loop through every individual theme directory
+```bash
+for theme_dir in *; do
+  if [ -d "$theme_dir" ] && [ -f "$theme_dir/README.org" ]; then
+    echo "Processing configuration matrix for theme: ${theme_dir}..."
+
+    # Extract the true source wallpaper link (the URL right before '[Background Link]')
+    wallpaper_url=$(grep -oE '\[\[https?://[^]]+\]\[Background Link\]\]' "$theme_dir/README.org" | sed -E 's/\[\[([^]]+)\]\[Background Link\]\]/\1/')
+
+    # Extract the screenshot link (the standalone raw.githubusercontent png link)
+    screenshot_url=$(grep -oE '\[\[https://raw\.githubusercontent\.com/[^]]+\.png\]\]' "$theme_dir/README.org" | tr -d '[]')
+
+    # Download the true customized wallpaper image asset if found
+    if [ ! -z "$wallpaper_url" ]; then
+      echo "  -> Fetching wallpaper..."
+      sudo curl -L "$wallpaper_url" -o "/etc/nixos/wallpapers/${theme_dir}.png"
+    fi
+
+    # Download the structural screenshot asset if found
+    if [ ! -z "$screenshot_url" ]; then
+      echo "  -> Fetching screenshot rice showcase..."
+      sudo curl -L "$screenshot_url" -o "/etc/nixos/wallpapers/${theme_dir}-screenshots.png"
+    fi
+  fi
+done
+```
+
+#### 5. Return to the configuration tree home and delete temporary file paths safely
+```bash
+cd /etc/nixos
+rm -rf /tmp/librephoenix-source
+```
+
+------------------------------
+#### Verifying Your New Asset Layout Matrix
+Once the script finishes downloading all 50+ entries, run a file listing check:
+
+```bash
+ll wallpapers/
+```
+
+You will now see a layout containing the custom distinct files matching the schema you explicitly outlined:
+
+* 
+* old-hope.png (The actual wallpaper background)
+* old-hope-screenshots.png (The corresponding configuration showcase preview)
+* gruvbox.png / gruvbox-screenshots.png
+* tokyo-night.png / tokyo-night-screenshots.png
+* 
 
 ### NOTE !!!
 
