@@ -679,3 +679,27 @@ Here are a few popular target presets you can drop straight into the activeTheme
 
 Would you like me to help you test a specific layout from this list right now to verify that your network environment handles the asset downloads without friction, or shall we look into setting a custom fallback wallpaper from your local drive instead?
 
+### NOTE !!!
+
+Yes, you do need to update or refresh your flake context, but only once to pull in the newly added stylix tool code into your local environment.
+Because we added a completely new external input to your architecture (github:danth/stylix), your current flake.lock file does not yet know how to find it or verify its security signatures.
+Follow these step-by-step actions to download the styling code and apply your setup without encountering evaluation errors:
+
+   1. Update your Flake input lockfile
+   Navigate to your project setup directory and run this command. This tells Nix to read your new flake.nix file, fetch the stylix repository source code, and lock down its exact version:
+   
+   nix flake update
+   
+   2. Add untracked files to Git (Mandatory if inside a Git Repository)
+   If your directory /etc/nixos/ or ~/_/pprgb is managed by Git, Nix flakes will completely ignore your new configuration files unless they are tracked. Ensure they are staged:
+   
+   git add flake.nix configuration.nix
+   
+   3. Rebuild your workstation configuration
+   With the locks successfully updated, trigger the installation profile to apply your theme:
+   
+   sudo nixos-rebuild switch --flake .#beast-kf
+   
+   
+Did the nix flake update command download the packaging blocks successfully, or did you hit a network access block inside your workstation sandbox environment?
+
