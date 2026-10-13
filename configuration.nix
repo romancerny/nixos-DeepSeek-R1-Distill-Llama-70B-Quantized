@@ -234,6 +234,9 @@ in
     polarity = "dark";
     
     targets.gnome.enable = true;
+    # 🛠️ SILENCE WARNINGS: Disables the broken QT generic engines at the system layer
+    targets.qt.enable = false;
+
     # ❌ REMOVED targets.wezterm.enable from here to fix the evaluation error
 
     # 🌟 FIXED MAPPING: Uses schemeName instead of activeTheme to match the true file names!
