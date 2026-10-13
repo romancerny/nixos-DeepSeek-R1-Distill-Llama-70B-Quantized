@@ -223,7 +223,7 @@ in
   environment.systemPackages = with pkgs; [
     git vim wget htop curl tmux gnumake python3 python3Packages.pip nodejs                  
     vscode google-chrome aider-chat gossip discord virt-manager sparrow                    
-    gimp beebeep keepassxc tor-browser
+    gimp beebeep keepassxc tor-browser kate
   ];
 
   # ---------------------------------------------------------------------
