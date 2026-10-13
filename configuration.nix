@@ -241,7 +241,16 @@ in
     image = ./. + "/wallpapers/${schemeName}.png";
 
     # Dynamic base16 scheme path generation
-    base16Scheme = "${pkgs.base16-schemes}/share/themes/${schemeName}.yaml";
+    #base16Scheme = "${pkgs.base16-schemes}/share/themes/${schemeName}.yaml";
+
+    # 🌟 LOCAL REPO SEARCH: Looks up the YAML scheme file directly inside your repository!
+    base16Scheme = let
+      targetPath = ./. + "/themes/${schemeName}.yaml";
+      fallbackPath = ./. + "/themes/gruvbox-dark-hard.yaml";
+    in
+      if builtins.pathExists targetPath 
+      then targetPath 
+      else fallbackPath;
   };
 
   system.stateVersion = "24.11";
