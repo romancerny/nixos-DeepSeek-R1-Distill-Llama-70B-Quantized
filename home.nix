@@ -53,5 +53,9 @@
   };
 
   # Stylix targets block
-  stylix.targets.wezterm.enable = true; 
+  stylix.targets.wezterm.enable = true;
+
+  # 🛠️ SILENCE WARNINGS: Prevents Stylix from trying to compile deprecated Rofi and QT options in your profile
+  stylix.targets.rofi.enable = false;
+  stylix.targets.qt.enable = false;
 }
