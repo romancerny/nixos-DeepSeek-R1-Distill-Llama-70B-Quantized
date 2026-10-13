@@ -221,9 +221,16 @@ in
 
   # Core developer packages available to all users
   environment.systemPackages = with pkgs; [
-    git vim wget htop curl tmux gnumake python3 python3Packages.pip nodejs                  
-    vscode google-chrome aider-chat gossip discord virt-manager sparrow                    
+    git vim wget htop curl tmux gnumake nodejs                  
+    vscode google-chrome gossip discord virt-manager sparrow                    
     gimp beebeep keepassxc tor-browser kate
+    
+    # Separated correctly:
+    python3 
+    python3Packages.pip 
+    
+    # Quoted correctly for the hyphen:
+    pkgs."aider-chat"
   ];
 
   # ---------------------------------------------------------------------
