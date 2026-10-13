@@ -513,7 +513,7 @@ git clone --depth 1 https://github.com /tmp/librephoenix-source
 cd /tmp/librephoenix-source/modules/themes
 ```
 
-# 4. Loop through every individual theme directory
+#### 4. Loop through every individual theme directory
 ```bash
 for theme_dir in *; do
   if [ -d "$theme_dir" ] && [ -f "$theme_dir/README.org" ]; then
@@ -562,6 +562,37 @@ You will now see a layout containing the custom distinct files matching the sche
 * gruvbox.png / gruvbox-screenshots.png
 * tokyo-night.png / tokyo-night-screenshots.png
 * 
+
+## Extract and copy the entire theme directory from the Nix store into your repo
+
+### Copy All Theme YAML Files to Your Repo
+
+Run this command block inside your /etc/nixos/ terminal. It will locate the active base16-schemes directory in your environment and copy the entire theme sheet layout array straight into your repo:
+```bash
+cd /etc/nixos
+```
+
+#### 1. Create a dedicated directory for your YAML color palettes
+```bash
+sudo mkdir -p themes
+```
+
+#### 2. Extract and copy the entire theme directory from the Nix store into your repo
+```bash
+sudo cp -r $(nix-build "<nixpkgs>" -A base16-schemes --no-out-link)/share/themes/. ./themes/
+```
+
+#### 3. Fix the permissions so they match your user profile workspace
+```bash
+sudo chmod -R 644 ./themes/*
+```
+
+#### 4. Tell Git to start tracking the files
+```bash
+git add themes/
+```
+
+(If you run ll themes/, you will now see files like gruvbox-dark-hard.yaml and dracula.yaml living directly in your configuration directory!)
 
 ### NOTE !!!
 
