@@ -221,15 +221,14 @@ in
 
   # Core developer packages available to all users
   environment.systemPackages = with pkgs; [
-    git vim wget htop curl tmux gnumake nodejs                  
+    git vim wget htop curl tmux gnumake python3 python3Packages.pip nodejs                  
     vscode google-chrome gossip discord virt-manager sparrow                    
-    gimp beebeep keepassxc tor-browser kate
+    gimp beebeep keepassxc tor-browser
     
-    # Separated correctly:
-    python3 
-    python3Packages.pip 
+    # Modern Nixpkgs path for Kate:
+    kdePackages.kate
     
-    # Quoted correctly for the hyphen:
+    # Hyphenated package handling:
     pkgs."aider-chat"
   ];
 
