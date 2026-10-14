@@ -42,7 +42,7 @@
         format = "via [$symbol$state]($style) ";
       };
 
-      # 🧠 BULLETPROOF DYNAMIC COLOR-SHIFTING RAM MODULE
+      # 🧠 TRUECOLOR DYNAMIC RAM MODULE
       custom.ram_usage = {
         when = "true";
         command = ''
@@ -50,42 +50,50 @@
             used=$3/1024/1024;
             pct=int(($3/$2)*100);
             
-            # Pure literal string formatting
-            if (pct >= 90)      print "\033[1;31m 🧠 " sprintf("%.1fGB (%d%%)", used, pct) "\033[0m ";
-            else if (pct >= 80) print "\033[1;33m 🧠 " sprintf("%.1fGB (%d%%)", used, pct) "\033[0m ";
-            else                print "\033[1;32m 🧠 " sprintf("%.1fGB (%d%%)", used, pct) "\033[0m ";
+            # Explicit Truecolor RGB Escapes (Bypasses Stylix / Themes)
+            green="\033[38;2;40;220;40m";
+            yellow="\033[38;2;240;240;0m";
+            red="\033[38;2;240;40;40m";
+            reset="\033[0m";
+            
+            if (pct >= 90)      color=red;
+            else if (pct >= 80) color=yellow;
+            else                color=green;
+            
+            printf " %s🧠 %.1fGB (%d%%)%s ", color, used, pct, reset;
           }'
         '';
         format = "$output";
       };
 
-      # ⚡ BULLETPROOF DYNAMIC COLOR-SHIFTING CPU MODULE
+      # ⚡ TRUECOLOR DYNAMIC CPU MODULE
       custom.cpu_usage = {
         when = "true";
         command = ''
-          # Reads real-time instantaneous system load delta metrics safely from the system kernel
           read -r cpu user nice system idle iowait irq softirq steal guest guest_nice < /proc/stat
-          
-          # Calculate current active and total blocks
           prev_active=$((user + nice + system + irq + softirq + steal))
           prev_total=$((prev_active + idle + iowait))
           
-          # Micro-sleep delta to measure processing cycle movements accurately
           sleep 0.1
           
           read -r cpu user nice system idle iowait irq softirq steal guest guest_nice < /proc/stat
           active=$((user + nice + system + irq + softirq + steal))
           total=$((active + idle + iowait))
           
-          # Evaluate load percentage over the measured temporal gap
           pct=$(( (active - prev_active) * 100 / (total - prev_total) ))
           
+          # Explicit Truecolor RGB Escapes (Bypasses Stylix / Themes)
+          green="\033[38;2;40;220;40m";
+          yellow="\033[38;2;240;240;0m";
+          red="\033[38;2;240;40;40m";
+          reset="\033[0m";
+          
           if [ "''$pct" -ge 90 ]; then
-            printf "\033[1;31mat ⚡ %d%%\033[0m " "''$pct"
+            printf " %s⚡ %d%%%s " "''$color" "''$pct" "''$reset"
           elif [ "''$pct" -ge 80 ]; then
-            printf "\033[1;33mat ⚡ %d%%\033[0m " "''$pct"
+            printf " %s⚡ %d%%%s " "''$yellow" "''$pct" "''$reset"
           else
-            printf "\033[1;32mat ⚡ %d%%\033[0m " "''$pct"
+            printf " %s⚡ %d%%%s " "''$green" "''$pct" "''$reset"
           fi
         '';
         format = "$output";
