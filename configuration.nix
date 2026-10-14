@@ -1,14 +1,8 @@
 { config, pkgs, lib, ... }:
 
 let
-  # ---------------------------------------------------------------------
-  # 🎨 THEME AUTOMATION MATRIX
-  # Change this single string to ANY folder/theme name in the catalog!
-  # Examples: "gruvbox", "catppuccin-mocha", "tokyo-night", "dracula", "nord", "cyberpunk"
-  # ---------------------------------------------------------------------
-  activeTheme = "miramare"; # ashes, atelier-forest, miramare
+  activeTheme = "miramare"; 
 
-  # Comprehensive mapping engine that connects all 55+ themes to their base16 yaml names
   themeSchemeMap = {
     "abyss"                  = "abyss";
     "amiga"                  = "amiga";
@@ -91,53 +85,82 @@ let
     "zenburn"                = "zenburn";
   };
 
-  # Helper to resolve the YAML name. Fallback to the theme name if not explicitly mapped.
   schemeName = if builtins.hasAttr activeTheme themeSchemeMap 
                then themeSchemeMap.${activeTheme} 
                else activeTheme;
 in
 {
   imports = [
-    ./hardware-configuration.nix # Auto-generated during install (Phase 3)
+    ./hardware-configuration.nix
   ];
 
-  # Enable experimental Flakes mechanics
   nix.settings.experimental-features = [ "nix-command" "flakes" ];
-
-  # Permit proprietary packages (NVIDIA drivers, Discord, Google Chrome)
   nixpkgs.config.allowUnfree = true;
 
-  # Core Bootloader Setup (modern UEFI)
   boot.loader.systemd-boot.enable = true;
   boot.loader.efi.canTouchEfiVariables = true;
 
   networking.hostName = "beast-kf";
   networking.networkmanager.enable = true;
-
-  # IMPORTANT SANDBOX DETAIL: use public DNS resolvers system-wide.
   networking.nameservers = [ "1.1.1.1" "9.9.9.9" ];
 
   time.timeZone = "Europe/London";
   i18n.defaultLocale = "en_GB.UTF-8";
 
-  # Desktop Environment
-  services.xserver.enable = true;
-  services.displayManager.gdm.enable = true;
-  services.desktopManager.gnome.enable = true;
+  # ---------------------------------------------------------------------
+  # 💻 SWAY & GREETD (PURE WAYLAND WINDOW MANAGER SUBSTITUTION)
+  # ---------------------------------------------------------------------
+  services.xserver.enable = false; # Complete eradication of legacy Xserver & GNOME stack
+  
+  programs.sway = {
+    enable = true;
+    extraPackages = with pkgs; [
+      swaylock
+      swayidle
+      wl-clipboard
+      mako # Wayland notification daemon
+      alacritty
+      dmenu
+    ];
+  };
 
-  # ---------------------------------------------------------------------
-  # 🚂 MEMORY MATRIX: Overcoming the 64GB Hardware Boundary
-  # ---------------------------------------------------------------------
+  # Modern display management via clean TUI console wrapper during boot
+  services.greetd = {
+    enable = true;
+    settings = {
+      default_session = {
+        command = "${pkgs.greetd.tuigreet}/bin/tuigreet --time --remember --cmd sway";
+        user = "greeter";
+      };
+    };
+  };
+
+  # Dbus system activation for sandboxing and pipewire integrations
+  services.dbus.enable = true;
+  xdg.portal = {
+    enable = true;
+    wlr.enable = true;
+    extraPortals = [ pkgs.xdg-desktop-portal-wlr ];
+  };
+
+  # 🚂 MEMORY MATRIX
   swapDevices = [ {
     device = "/var/lib/swapfile";
     size = 48 * 1024; 
   } ];
 
-  # ---------------------------------------------------------------------
-  # 🎮 NVIDIA GRAPHICS STACK (16GB RTX 3080 Laptop GPU)
-  # ---------------------------------------------------------------------
+  # 🎮 NVIDIA GRAPHICS STACK (Optimized with Sway Wayland Execution Flags)
   hardware.graphics.enable = true;
   services.xserver.videoDrivers = [ "nvidia" ];
+
+  environment.sessionVariables = {
+    NIXOS_OZONE_GFX_ACCELERATION = "1";
+    XDG_SESSION_TYPE = "wayland";
+    XDG_CURRENT_DESKTOP = "sway";
+    MOZ_ENABLE_WAYLAND = "1";
+    # Fix potential Nvidia cursor invisibility on Wayland wrappers
+    WLR_NO_HARDWARE_CURSORS = "1"; 
+  };
 
   hardware.nvidia = {
     modesetting.enable = true;
@@ -156,9 +179,7 @@ in
     };
   };
 
-  # ---------------------------------------------------------------------
-  # 🐋 OLLAMA HARDWARE INFERENCE LAYER
-  # ---------------------------------------------------------------------
+  # 🐋 OLLAMA HARDWARE INFERENCE LAYER (Strictly Intact)
   services.ollama = {
     enable = true;
     package = pkgs.ollama-cuda; 
@@ -169,20 +190,13 @@ in
     };
   };
 
-  # ---------------------------------------------------------------------
-  # 🖥️ VIRTUALIZATION & BACKGROUND DAEMONS
-  # ---------------------------------------------------------------------
   virtualisation.libvirtd.enable = true;
   programs.virt-manager.enable = true;
-
   services.tor.enable = true;
   services.tor.client.enable = true;
 
-  # ---------------------------------------------------------------------
   # 🔒 FIREWALL & LAN NETWORK ISOLATION SANDBOX (Strict Safety)
-  # ---------------------------------------------------------------------
   users.groups.ai-sandbox = {};
-
   networking.firewall = {
     enable = true;
     extraCommands = ''
@@ -198,22 +212,16 @@ in
     '';
   };
 
-  # ---------------------------------------------------------------------
   # 👥 DUAL-USER PROFILE DEFINITIONS
-  # ---------------------------------------------------------------------
-
-  # Register the shell system-wide to handle runtime paths and completions
   programs.zsh.enable = true;
-
   users.users = {
     roman = {
       isNormalUser = true;
       description = "Roman System Administrator";
-      extraGroups = [ "networkmanager" "wheel" "video" "libvirtd" ]; 
+      extraGroups = [ "networkmanager" "wheel" "video" "libvirtd" "input" ]; 
       shell = pkgs.zsh;
       initialPassword = "ChangeThisPassword123!"; 
     };
-
     ai-agent = {
       isNormalUser = true;
       description = "Isolated AI Execution Worker";
@@ -223,47 +231,26 @@ in
     };
   };
 
-  # Core developer packages available to all users
   environment.systemPackages = with pkgs; [
     git vim wget htop curl tmux gnumake python3 python3Packages.pip nodejs                  
     vscode google-chrome gossip discord virt-manager sparrow                    
-    gimp beebeep keepassxc tor-browser
-    
-    # Modern Nixpkgs path for Kate:
-    kdePackages.kate
-    
-    # Hyphenated package handling:
-    pkgs."aider-chat"
+    gimp beebeep keepassxc tor-browser kdePackages.kate pkgs."aider-chat"
+    # Audio volume control helper for Waybar scripting integration
+    wireplumber 
   ];
 
-  # ---------------------------------------------------------------------
-  # 🎨 MODULAR THEMING SUBSYSTEM (Stylix Core Integration)
-  # ---------------------------------------------------------------------
+  # 🎨 MODULAR THEMING SUBSYSTEM
   stylix = {
     enable = true;
     polarity = "dark";
-    
-    targets.gnome.enable = true;
-    # 🛠️ SILENCE WARNINGS: Disables the broken QT generic engines at the system layer
+    targets.gnome.enable = false; # Completely disabled target
     targets.qt.enable = false;
-
-    # ❌ REMOVED targets.wezterm.enable from here to fix the evaluation error
-
-    # 🌟 FIXED MAPPING: Uses schemeName instead of activeTheme to match the true file names!
-    # This correctly evaluates to ./wallpapers/gruvbox-dark-hard.png
     image = ./. + "/wallpapers/${schemeName}.png";
-
-    # Dynamic base16 scheme path generation
-    #base16Scheme = "${pkgs.base16-schemes}/share/themes/${schemeName}.yaml";
-
-    # 🌟 LOCAL REPO SEARCH: Looks up the YAML scheme file directly inside your repository!
     base16Scheme = let
       targetPath = ./. + "/themes/${schemeName}.yaml";
       fallbackPath = ./. + "/themes/gruvbox-dark-hard.yaml";
     in
-      if builtins.pathExists targetPath 
-      then targetPath 
-      else fallbackPath;
+      if builtins.pathExists targetPath then targetPath else fallbackPath;
   };
 
   system.stateVersion = "24.11";
