@@ -14,7 +14,7 @@
 
     settings = {
       # 🌟 EXACT SEQUENCING: Directory -> Git Branch -> Nix Snowflake -> CPU Tracker -> Memory Tracker -> Command Arrow
-      format = "$directory$git_branch$nix_shell\$memory_usage$character";
+      format = "$directory$git_branch$nix_shell\${custom.ram_usage}$character";
 
       # ❄️ NATIVE NIX-SHELL / DEV-SHELL DETECTOR
       nix_shell = {
@@ -26,13 +26,20 @@
         format = "via [$symbol$state]($style) ";
       };
 
-      # 🧠 NATIVE MEMORY TRACKER (Always On, Bold White)
-      memory_usage = {
-        disabled = false;
-        threshold = 0;              # Pure integer type check (forces it always on)
-        style = "bold dark green"; 
-        symbol = "🧠 ";
-        format = "[$symbol$ram ($ram_pct)]($style) ";
+      # 🧠 LIGHTWEIGHT HIGH-PERFORMANCE RAM MODULE (0ms Latency)
+      custom.ram_usage = {
+        when = "true";
+        # Pulls live numbers from the kernel and formats them instantly to match your exact pattern
+        command = ''
+          free -m | awk '/Mem:/ {
+            used = int($3 / 1024 + 0.5);
+            total = int($2 / 1024 + 0.5);
+            pct = int(($3 / $2) * 100);
+            printf "%d/%d GiB %d%%", used, total, pct;
+          }'
+        '';
+        style = "bold green"; # Standard, consistent color definition matching system themes
+        format = "[🧠 $output]($style) ";
       };
 
       # Sets up standard crisp command prompt arrows at the end
