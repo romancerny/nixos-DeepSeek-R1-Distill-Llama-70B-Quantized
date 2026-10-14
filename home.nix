@@ -35,11 +35,11 @@
         format = "[$symbol$ram ($ram_pct)]($style) ";
       };
 
-      # ⚡ INSTANT CPU LOAD TRACKER (0ms Latency, No Timeouts, Bold White)
+      # ⚡ INSTANT PERCENTAGE CPU TRACKER (0ms Latency, No Timeouts, Bold White)
       custom.cpu_usage = {
         when = "true";
-        # Reads the 1-minute global core load average instantly from kernel stream memory
-        command = "awk '{print $1}' /proc/loadavg";
+        # Uses mpstat to capture instantaneous load over a fast 0.1s delta sample
+        command = "${pkgs.sysstat}/bin/mpstat 1 1 | awk 'END {print int(100 - $NF) \"%\"}'";
         style = "bold white";
         format = "[⚡ $output]($style) ";
       };
