@@ -7,6 +7,11 @@
 
   programs.home-manager.enable = true;
 
+  # 🐚 ADD THIS BLOCK RIGHT HERE TO ACTIVATE ZSH MANAGEMENT
+  programs.zsh = {
+    enable = true;
+  };
+
   # 🚀 PURE NATIVE STARSHIP PROMPT CONFIGURATION
   programs.starship = {
     enable = true;
