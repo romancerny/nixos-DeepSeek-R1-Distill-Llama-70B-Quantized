@@ -112,6 +112,8 @@ in
   
   programs.sway = {
     enable = true;
+    # 🌟 FIXED: Instructs the system wrapper to automatically bypass the Nvidia safety blocker globally
+    extraOptions = [ "--unsupported-gpu" ];
     extraPackages = with pkgs; [
       swaylock
       swayidle
@@ -125,8 +127,8 @@ in
     enable = true;
     settings = {
       default_session = {
-        # 🌟 FIXED: Evaluates directly to pkgs.tuigreet path safely
-        command = "${pkgs.tuigreet}/bin/tuigreet --time --remember --cmd sway";
+        # 🌟 FIXED: Passes the explicit GPU argument straight to the command layer inside tuigreet
+        command = "${pkgs.tuigreet}/bin/tuigreet --time --remember --cmd 'sway --unsupported-gpu'";
         user = "greeter";
       };
     };
@@ -155,6 +157,9 @@ in
     XDG_CURRENT_DESKTOP = "sway";
     MOZ_ENABLE_WAYLAND = "1";
     WLR_NO_HARDWARE_CURSORS = "1"; 
+    # 🌟 FIXED: Injects direct Wayland backend hooks for proprietary driver stability
+    GBM_BACKEND = "nvidia-drm";
+    __GLX_VENDOR_LIBRARY_NAME = "nvidia";
   };
 
   hardware.nvidia = {
