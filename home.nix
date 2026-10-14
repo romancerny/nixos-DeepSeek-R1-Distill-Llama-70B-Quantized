@@ -7,19 +7,30 @@
 
   programs.home-manager.enable = true;
 
-  # 🐚 ADD THIS BLOCK RIGHT HERE TO ACTIVATE ZSH MANAGEMENT
+  # 🐚 ZSH SHELL PROFILE CONFIGURATION
   programs.zsh = {
     enable = true;
+    enableCompletion = true;
+    autosuggestion.enable = true;
+    syntaxHighlighting.enable = true;
+    autocd = true;
+
+    # Move your legacy aliases here to make them portable
+    shellAliases = {
+      ll = "ls -la";
+      rebuild = "sudo nixos-rebuild switch --flake /etc/nixos/#beast-kf";
+      gc = "nix-collect-garbage -d";
+    };
   };
 
-  # 🚀 PURE NATIVE STARSHIP PROMPT CONFIGURATION
+  # 🚀 STARSHIP PROMPT CONFIGURATION
   programs.starship = {
     enable = true;
-    enableZshIntegration = true;
+    enableZshIntegration = true; # Seamlessly hooks into your Zsh shell context
 
     settings = {
-      # 🌟 EXACT SEQUENCING: Directory -> Git Branch -> Nix Snowflake -> CPU Tracker -> Memory Tracker -> Command Arrow
-      format = "$directory$git_branch$nix_shell\${custom.ram_usage}$character";
+      # Customises the overall visual sequence of your prompt layout
+      format = "$directory$git_branch$nix_shell$memory_usage$character";
 
       # ❄️ NATIVE NIX-SHELL / DEV-SHELL DETECTOR
       nix_shell = {
