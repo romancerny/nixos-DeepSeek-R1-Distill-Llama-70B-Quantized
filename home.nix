@@ -7,6 +7,29 @@
 
   programs.home-manager.enable = true;
 
+  # 🐚 ZSH SHELL PROFILE CONFIGURATION
+  programs.zsh = {
+    enable = true;
+    enableCompletion = true;
+    autosuggestion.enable = true;
+    syntaxHighlighting.enable = true;
+    autocd = true;
+
+    # Move your legacy aliases here to make them portable
+    shellAliases = {
+      ll = "ls -la";
+      rebuild = "sudo nixos-rebuild switch --flake /etc/nixos/#beast-kf";
+      gc = "nix-collect-garbage -d";
+    };
+
+    # Lightweight prompt integration using default frameworks
+    oh-my-zsh = {
+      enable = true;
+      plugins = [ "git" "sudo" ];
+      theme = "robbyrussell";
+    };
+  };
+
   # WezTerm settings block
   programs.wezterm = {
     enable = true;
