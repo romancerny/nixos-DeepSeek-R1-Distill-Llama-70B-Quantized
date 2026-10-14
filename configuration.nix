@@ -107,10 +107,8 @@ in
   time.timeZone = "Europe/London";
   i18n.defaultLocale = "en_GB.UTF-8";
 
-  # ---------------------------------------------------------------------
-  # 💻 SWAY & GREETD (PURE WAYLAND WINDOW MANAGER SUBSTITUTION)
-  # ---------------------------------------------------------------------
-  services.xserver.enable = false; # Complete eradication of legacy Xserver & GNOME stack
+  # 💻 SWAY & GREETD
+  services.xserver.enable = false; 
   
   programs.sway = {
     enable = true;
@@ -118,13 +116,11 @@ in
       swaylock
       swayidle
       wl-clipboard
-      mako # Wayland notification daemon
+      mako 
       alacritty
-      dmenu
     ];
   };
 
-  # Modern display management via clean TUI console wrapper during boot
   services.greetd = {
     enable = true;
     settings = {
@@ -135,7 +131,6 @@ in
     };
   };
 
-  # Dbus system activation for sandboxing and pipewire integrations
   services.dbus.enable = true;
   xdg.portal = {
     enable = true;
@@ -149,7 +144,7 @@ in
     size = 48 * 1024; 
   } ];
 
-  # 🎮 NVIDIA GRAPHICS STACK (Optimized with Sway Wayland Execution Flags)
+  # 🎮 NVIDIA GRAPHICS STACK
   hardware.graphics.enable = true;
   services.xserver.videoDrivers = [ "nvidia" ];
 
@@ -158,7 +153,6 @@ in
     XDG_SESSION_TYPE = "wayland";
     XDG_CURRENT_DESKTOP = "sway";
     MOZ_ENABLE_WAYLAND = "1";
-    # Fix potential Nvidia cursor invisibility on Wayland wrappers
     WLR_NO_HARDWARE_CURSORS = "1"; 
   };
 
@@ -179,7 +173,7 @@ in
     };
   };
 
-  # 🐋 OLLAMA HARDWARE INFERENCE LAYER (Strictly Intact)
+  # 🐋 OLLAMA HARDWARE INFERENCE LAYER
   services.ollama = {
     enable = true;
     package = pkgs.ollama-cuda; 
@@ -195,7 +189,7 @@ in
   services.tor.enable = true;
   services.tor.client.enable = true;
 
-  # 🔒 FIREWALL & LAN NETWORK ISOLATION SANDBOX (Strict Safety)
+  # 🔒 FIREWALL & LAN NETWORK ISOLATION SANDBOX
   users.groups.ai-sandbox = {};
   networking.firewall = {
     enable = true;
@@ -235,7 +229,6 @@ in
     git vim wget htop curl tmux gnumake python3 python3Packages.pip nodejs                  
     vscode google-chrome gossip discord virt-manager sparrow                    
     gimp beebeep keepassxc tor-browser kdePackages.kate pkgs."aider-chat"
-    # Audio volume control helper for Waybar scripting integration
     wireplumber 
   ];
 
@@ -243,7 +236,7 @@ in
   stylix = {
     enable = true;
     polarity = "dark";
-    targets.gnome.enable = false; # Completely disabled target
+    targets.gnome.enable = false;
     targets.qt.enable = false;
     image = ./. + "/wallpapers/${schemeName}.png";
     base16Scheme = let
