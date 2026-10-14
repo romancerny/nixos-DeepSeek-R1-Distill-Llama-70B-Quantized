@@ -30,7 +30,7 @@
 
     settings = {
       # Customises the overall visual sequence of your prompt layout
-      format = "$directory$git_branch$nix_shell$memory_usage$character";
+      format = "$directory$git_branch$nix_shell\${custom.ram_usage}$character";
 
       # ❄️ NATIVE NIX-SHELL / DEV-SHELL DETECTOR
       nix_shell = {
