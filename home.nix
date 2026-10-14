@@ -13,8 +13,8 @@
     enableZshIntegration = true;
 
     settings = {
-      # 🌟 PERFECT SEQUENCE: Location -> Git -> Nix Snowflake -> CPU -> RAM -> Command Arrow
-      format = "$directory$git_branch$nix_shell\${custom.cpu_usage}\${custom.ram_usage}$character";
+      # 🌟 EXACT SEQUENCING: Directory -> Git Branch -> Nix Snowflake -> CPU Tracker -> Memory Tracker -> Command Arrow
+      format = "$directory$git_branch$nix_shell\${custom.cpu_usage}$memory_usage$character";
 
       # ❄️ NATIVE NIX-SHELL / DEV-SHELL DETECTOR
       nix_shell = {
@@ -26,56 +26,21 @@
         format = "via [$symbol$state]($style) ";
       };
 
-      # 🧠 BULLETPROOF DYNAMIC RAM ENGINE
-      custom.ram_usage = {
-        when = "true";
-        command = ''
-          free | awk '/Mem:/ {
-            used=$3/1024/1024;
-            pct=int(($3/$2)*100);
-            
-            if (pct >= 90)      color="#f04040"; # Vibrant Red
-            else if (pct >= 80) color="#f0f000"; # Vibrant Yellow
-            else                color="#40e040"; # Vibrant Green
-            
-            # The backslash before the pipe splits the text from the color cleanly for Starship
-            printf "%.1fGB (%d%%)\\|%s\n", used, pct, color;
-          }'
-        '';
-        format = "[🧠 \${output text}](bold \${output color}) ";
+      # 🧠 NATIVE MEMORY TRACKER (Always On, Bold White)
+      memory_usage = {
+        disabled = false;
+        threshold = 0;              # Pure integer type check (forces it always on)
+        style = "bold white";       # Uniform bold white style
+        symbol = "🧠 ";
+        format = "[$symbol$ram ($ram_pct)]($style) ";
       };
 
-      # ⚡ DYNAMIC DIFFERENTIAL CPU ENGINE
+      # ⚡ HASSLE-FREE REAL-TIME CPU UTILITY ENGINE (Always On, Bold White)
       custom.cpu_usage = {
         when = "true";
-        command = ''
-          # Reads metrics instantly from the kernel status lines
-          read -r _ u1 n1 s1 i1 io1 ir1 si1 st1 _ < /proc/stat
-          sleep 0.05
-          read -r _ u2 n2 s2 i2 io2 ir2 si2 st2 _ < /proc/stat
-          
-          prev_idle=$((i1 + io1))
-          idle=$((i2 + io2))
-          prev_total=$((u1 + n1 + s1 + i1 + io1 + ir1 + si1 + st1))
-          total=$((u2 + n2 + s2 + i2 + io2 + ir2 + si2 + st2))
-          
-          diff_idle=$((idle - prev_idle))
-          diff_total=$((total - prev_total))
-          
-          if [ "$diff_total" -eq 0 ]; then
-            pct=0
-          else
-            pct=$(( 100 * (diff_total - diff_idle) / diff_total ))
-          fi
-          
-          if [ "$pct" -ge 90 ]; then      color="#f04040"
-          elif [ "$pct" -ge 80 ]; then    color="#f0f000"
-          else                            color="#40e040"
-          fi
-          
-          printf "%d%%\\|%s\n" "$pct" "$color"
-        '';
-        format = "[⚡ \${output text}](bold \${output color}) ";
+        command = "awk '/cpu / {print int(100 - ($5*100/($2+$3+$4+$5+$6+$7+$8))) \"%\"}' /proc/stat";
+        style = "bold white";       # Uniform bold white style
+        format = "[⚡ $output]($style) ";
       };
 
       # Sets up standard crisp command prompt arrows at the end
