@@ -45,7 +45,7 @@
       # 🧠 MEMORY USAGE MODULE ACTIVATION (With Percentage Allocation)
       memory_usage = {
         disabled = false;
-        threshold = -1.0; 
+        threshold = 0; 
         style = "bold dimmed white";
         symbol = "🧠 ";
         # 🌟 THE FORMAT: Displays both raw RAM gigabytes AND current consumption percentages
