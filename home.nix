@@ -35,12 +35,12 @@
         format = "[$symbol$ram ($ram_pct)]($style) ";
       };
 
-      # ⚡ HASSLE-FREE REAL-TIME CPU UTILITY ENGINE (Always On, Bold White)
+      # ⚡ INSTANT CPU LOAD TRACKER (0ms Latency, No Timeouts, Bold White)
       custom.cpu_usage = {
         when = "true";
-        # Uses vmstat with two fast intervals to accurately measure the current load gap
-        command = "vmstat 1 2 | awk 'END {print (100 - $15) \"%\"}'";
-        style = "bold white";       # Uniform bold white style
+        # Reads the 1-minute global core load average instantly from kernel stream memory
+        command = "awk '{print $1}' /proc/loadavg";
+        style = "bold white";
         format = "[⚡ $output]($style) ";
       };
 
