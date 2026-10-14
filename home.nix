@@ -14,7 +14,7 @@
 
     settings = {
       # 🌟 EXACT SEQUENCING: Directory -> Git Branch -> Nix Snowflake -> CPU Tracker -> Memory Tracker -> Command Arrow
-      format = "$directory$git_branch$nix_shell\${custom.cpu_usage}$memory_usage$character";
+      format = "$directory$git_branch$nix_shell\$memory_usage$character";
 
       # ❄️ NATIVE NIX-SHELL / DEV-SHELL DETECTOR
       nix_shell = {
@@ -33,15 +33,6 @@
         style = "bold white";       # Uniform bold white style
         symbol = "🧠 ";
         format = "[$symbol$ram ($ram_pct)]($style) ";
-      };
-
-      # ⚡ INSTANT PERCENTAGE CPU TRACKER (0ms Latency, No Timeouts, Bold White)
-      custom.cpu_usage = {
-        when = "true";
-        # Uses mpstat to capture instantaneous load over a fast 0.1s delta sample
-        command = "${pkgs.sysstat}/bin/mpstat 1 1 | awk 'END {print int(100 - $NF) \"%\"}'";
-        style = "bold white";
-        format = "[⚡ $output]($style) ";
       };
 
       # Sets up standard crisp command prompt arrows at the end
