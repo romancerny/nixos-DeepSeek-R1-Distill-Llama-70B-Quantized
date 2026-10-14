@@ -42,6 +42,15 @@
         format = "via [$symbol$state]($style) ";
       };
 
+      # 🧠 MEMORY USAGE MODULE ACTIVATION
+      memory_usage = {
+        disabled = false;           # 🌟 Activates the module natively
+        threshold = 1;              # Shows memory if usage is above 1% (essentially always on)
+        style = "bold dimmed white";# A clean, unobtrusive look that won't clutter your theme colors
+        symbol = "🧠 ";            # Icon anchor for scannability
+        format = "using [$symbol$ram]($style) ";
+      };
+
       # Sets up standard crisp command prompt arrows at the end
       character = {
         success_symbol = "[➜](bold green)";
