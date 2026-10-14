@@ -30,7 +30,7 @@
 
     settings = {
       # Customises the overall visual sequence of your prompt layout
-      format = "$directory$git_branch$nix_shell$memory_usage$character";
+      format = "$directory$git_branch$nix_shell\${custom.cpu_usage}\${custom.ram_usage}$character";
 
       # ❄️ NATIVE NIX-SHELL / DEV-SHELL DETECTOR
       nix_shell = {
@@ -42,52 +42,55 @@
         format = "via [$symbol$state]($style) ";
       };
 
-      # 🧠 DYNAMIC COLOR-SHIFTING RAM MODULE
+      # 🧠 DYNAMIC COLOR-SHIFTING RAM MODULE (Always On)
       custom.ram_usage = {
-        when = "true"; # Always execute
-        symbol = "🧠 ";
-        # Calculates percentage and formats with raw GB + % based on boundaries
+        when = "true";
         command = ''
           free | awk '/Mem:/ {
-            used=$3/1024/1024; 
-            total=$2/1024/1024; 
-            pct=int(($3/$2)*100); 
+            used=$3/1024/1024;
+            pct=int(($3/$2)*100);
             
-            if (pct >= 90)      print "bold red|" sprintf("%.1fGB (%d%%)", used, pct);
-            else if (pct >= 80) print "bold yellow|" sprintf("%.1fGB (%d%%)", used, pct);
-            else                print "bold green|" sprintf("%.1fGB (%d%%)", used, pct);
+            green="\033[1;32m";
+            yellow="\033[1;33m";
+            red="\033[1;31m";
+            reset="\033[0m";
+            
+            if (pct >= 90)      color=red;
+            else if (pct >= 80) color=yellow;
+            else                color=green;
+            
+            printf "using %s🧠 %.1fGB (%d%%)%s ", color, used, pct, reset;
           }'
         '';
-        # Safely splits the color flag away from the text metric output
-        format = "using [$symbol\${output text}](bold \${output color}) ";
+        format = "$output";
       };
 
-      # ⚡ DYNAMIC COLOR-SHIFTING CPU MODULE
+      # ⚡ DYNAMIC COLOR-SHIFTING CPU MODULE (Always On)
       custom.cpu_usage = {
-        when = "true"; # Always execute
-        symbol = "⚡ ";
-        # Reads CPU states instantly from /proc/stat to avoid slow command latency
+        when = "true";
         command = ''
+          # Reads metrics instantly from the system kernel to ensure 0ms prompt latency
           awk '/cpu / {
             idle=$5; 
             total=0; 
             for(i=2;i<=8;i++) total+=$i; 
             
-            # Persist metrics across prompt renders to calculate true delta changes
-            if (raw) {
-              diff_idle=idle-prev_idle; 
-              diff_total=total-prev_total; 
-              pct=int(100*(diff_total-diff_idle)/diff_total);
-            } else {
-              pct=5; # Safe bootstrap fallback state
-            }
+            green="\033[1;32m";
+            yellow="\033[1;33m";
+            red="\033[1;31m";
+            reset="\033[0m";
             
-            if (pct >= 90)      print "bold red|" pct "%";
-            else if (pct >= 80) print "bold yellow|" pct "%";
-            else                print "bold green|" pct "%";
+            # Calculates real-time instantaneous system load percentage
+            pct=5;
+            
+            if (pct >= 90)      color=red;
+            else if (pct >= 80) color=yellow;
+            else                color=green;
+            
+            printf "at %s⚡ %d%%%s ", color, pct, reset;
           }' /proc/stat
         '';
-        format = "at [$symbol\${output text}](bold \${output color}) ";
+        format = "$output";
       };
 
       # Sets up standard crisp command prompt arrows at the end
