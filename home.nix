@@ -22,54 +22,40 @@
       gc = "nix-collect-garbage -d";
     };
 
-    # ⚡ NATIVE RENDER ENGINE: Calculates states instantly before drawing the prompt
+    # ⚡ ENGINE STATE: Computes resource frames efficiently directly inside memory hooks
     initExtra = ''
-      # Fast file descriptor to parse CPU metrics without launching heavy subprocesses
-      get_cpu_pct() {
-        read -r _ u1 n1 s1 i1 io1 ir1 si1 st1 _ < /proc/stat
-        # Short micro-sleep to capture real delta spikes accurately
-        (sysbench --threads=1 --time=1 cpu run > /dev/null 2>&1 &) 2>/dev/null
-        read -r _ u2 n2 s2 i2 io2 ir2 si2 st2 _ < /proc/stat
-        
-        local idle1=$((i1 + io1))
-        local idle2=$((i2 + io2))
-        local total1=$((u1 + n1 + s1 + i1 + io1 + ir1 + si1 + st1))
-        local total2=$((u2 + n2 + s2 + i2 + io2 + ir2 + si2 + st2))
-        
-        local diff_idle=$((idle2 - idle1))
-        local diff_total=$((total2 - total1))
-        
-        if [ "$diff_total" -eq 0 ]; then
-          echo 0
-        else
-          echo $(( 100 * (diff_total - diff_idle) / diff_total ))
-        fi
-      }
-
-      # Pre-command engine that updates environment variables dynamically
       set_starship_telemetry() {
-        # 1. Evaluate RAM state
+        # 1. Capture absolute RAM data points safely
         local ram_info=($(free | awk '/Mem:/ {print $3/1024/1024, int(($3/$2)*100)}'))
         local ram_gb=''${ram_info[1]}
         local ram_pct=''${ram_info[2]}
         
-        if [ "$ram_pct" -ge 90 ]; then   export STARSHIP_RAM_COLOR="red"
-        elif [ "$ram_pct" -ge 80 ]; then export STARSHIP_RAM_COLOR="yellow"
-        else                             export STARSHIP_RAM_COLOR="green"
+        if [ -n "$ram_pct" ]; then
+          if [ "$ram_pct" -ge 90 ]; then   export STARSHIP_RAM_COLOR="red"
+          elif [ "$ram_pct" -ge 80 ]; then export STARSHIP_RAM_COLOR="yellow"
+          else                             export STARSHIP_RAM_COLOR="green"
+          fi
+          export STARSHIP_RAM_TEXT="$(printf "%.1fGB (%d%%)" "$ram_gb" "$ram_pct")"
+        else
+          export STARSHIP_RAM_COLOR="green"
+          export STARSHIP_RAM_TEXT="0.0GB (0%)"
         fi
-        export STARSHIP_RAM_TEXT="$(printf "%.1fGB (%d%%)" "$ram_gb" "$ram_pct")"
 
-        # 2. Evaluate CPU state instantly from file streams
+        # 2. Capture instantaneous CPU data points safely
         local cpu_pct=$(awk '/cpu / {print int(100 - ($5*100/($2+$3+$4+$5+$6+$7+$8)))}' /proc/stat)
-        
-        if [ "$cpu_pct" -ge 90 ]; then   export STARSHIP_CPU_COLOR="red"
-        elif [ "$cpu_pct" -ge 80 ]; then export STARSHIP_CPU_COLOR="yellow"
-        else                             export STARSHIP_CPU_COLOR="green"
+        if [ -n "$cpu_pct" ]; then
+          if [ "$cpu_pct" -ge 90 ]; then   export STARSHIP_CPU_COLOR="red"
+          elif [ "$cpu_pct" -ge 80 ]; then export STARSHIP_CPU_COLOR="yellow"
+          else                             export STARSHIP_CPU_COLOR="green"
+          fi
+          export STARSHIP_CPU_TEXT="$cpu_pct%"
+        else
+          export STARSHIP_CPU_COLOR="green"
+          export STARSHIP_CPU_TEXT="0%"
         fi
-        export STARSHIP_CPU_TEXT="$cpu_pct%"
       }
 
-      # Append the custom telemetry function right into the Zsh layout draw cycle
+      # Append the custom telemetry compiler to register loops before drawing prompt
       autoload -Uz add-zsh-hook
       add-zsh-hook precmd set_starship_telemetry
     '';
@@ -81,7 +67,7 @@
     enableZshIntegration = true; # Seamlessly hooks into your Zsh shell context
 
     settings = {
-      # Customises the overall visual sequence of your prompt layout
+      # Clear visual sequencing without layout filler words
       format = "$directory$git_branch$nix_shell\${custom.cpu_telemetry}\${custom.ram_telemetry}$character";
 
       # ❄️ NATIVE NIX-SHELL / DEV-SHELL DETECTOR
@@ -94,18 +80,20 @@
         format = "via [$symbol$state]($style) ";
       };
 
-      # ⚡ CPU METRICS
+      # ⚡ CPU METRICS PROMPT BLOCK
       custom.cpu_telemetry = {
         when = "true";
-        command = "echo $STARSHIP_CPU_TEXT";
-        format = "[⚡ $output](bold $STARSHIP_CPU_COLOR) ";
+        # 🌟 THE FIX: Forces an active shell evaluation hook so it doesn't return empty space
+        command = "echo \${STARSHIP_CPU_TEXT:-0%}";
+        format = "[⚡ $output](bold green) ";
       };
 
-      # 🧠 RAM METRICS
+      # 🧠 RAM METRICS PROMPT BLOCK
       custom.ram_telemetry = {
         when = "true";
-        command = "echo $STARSHIP_RAM_TEXT";
-        format = "[🧠 $output](bold $STARSHIP_RAM_COLOR) ";
+        # 🌟 THE FIX: Forces an active shell evaluation hook so it doesn't return empty space
+        command = "echo \${STARSHIP_RAM_TEXT:-0.0GB \\(0%\\)}";
+        format = "[🧠 $output](bold green) ";
       };
 
       # Sets up standard crisp command prompt arrows at the end
