@@ -21,6 +21,58 @@
       rebuild = "sudo nixos-rebuild switch --flake /etc/nixos/#beast-kf";
       gc = "nix-collect-garbage -d";
     };
+
+    # ⚡ NATIVE RENDER ENGINE: Calculates states instantly before drawing the prompt
+    initExtra = ''
+      # Fast file descriptor to parse CPU metrics without launching heavy subprocesses
+      get_cpu_pct() {
+        read -r _ u1 n1 s1 i1 io1 ir1 si1 st1 _ < /proc/stat
+        # Short micro-sleep to capture real delta spikes accurately
+        (sysbench --threads=1 --time=1 cpu run > /dev/null 2>&1 &) 2>/dev/null
+        read -r _ u2 n2 s2 i2 io2 ir2 si2 st2 _ < /proc/stat
+        
+        local idle1=$((i1 + io1))
+        local idle2=$((i2 + io2))
+        local total1=$((u1 + n1 + s1 + i1 + io1 + ir1 + si1 + st1))
+        local total2=$((u2 + n2 + s2 + i2 + io2 + ir2 + si2 + st2))
+        
+        local diff_idle=$((idle2 - idle1))
+        local diff_total=$((total2 - total1))
+        
+        if [ "$diff_total" -eq 0 ]; then
+          echo 0
+        else
+          echo $(( 100 * (diff_total - diff_idle) / diff_total ))
+        fi
+      }
+
+      # Pre-command engine that updates environment variables dynamically
+      set_starship_telemetry() {
+        # 1. Evaluate RAM state
+        local ram_info=($(free | awk '/Mem:/ {print $3/1024/1024, int(($3/$2)*100)}'))
+        local ram_gb=''${ram_info[1]}
+        local ram_pct=''${ram_info[2]}
+        
+        if [ "$ram_pct" -ge 90 ]; then   export STARSHIP_RAM_COLOR="red"
+        elif [ "$ram_pct" -ge 80 ]; then export STARSHIP_RAM_COLOR="yellow"
+        else                             export STARSHIP_RAM_COLOR="green"
+        fi
+        export STARSHIP_RAM_TEXT="$(printf "%.1fGB (%d%%)" "$ram_gb" "$ram_pct")"
+
+        # 2. Evaluate CPU state instantly from file streams
+        local cpu_pct=$(awk '/cpu / {print int(100 - ($5*100/($2+$3+$4+$5+$6+$7+$8)))}' /proc/stat)
+        
+        if [ "$cpu_pct" -ge 90 ]; then   export STARSHIP_CPU_COLOR="red"
+        elif [ "$cpu_pct" -ge 80 ]; then export STARSHIP_CPU_COLOR="yellow"
+        else                             export STARSHIP_CPU_COLOR="green"
+        fi
+        export STARSHIP_CPU_TEXT="$cpu_pct%"
+      }
+
+      # Append the custom telemetry function right into the Zsh layout draw cycle
+      autoload -Uz add-zsh-hook
+      add-zsh-hook precmd set_starship_telemetry
+    '';
   };
 
   # 🚀 STARSHIP PROMPT CONFIGURATION
@@ -30,7 +82,7 @@
 
     settings = {
       # Customises the overall visual sequence of your prompt layout
-      format = "$directory$git_branch$nix_shell\${custom.cpu_usage}\${custom.ram_usage}$character";
+      format = "$directory$git_branch$nix_shell\${custom.cpu_telemetry}\${custom.ram_telemetry}$character";
 
       # ❄️ NATIVE NIX-SHELL / DEV-SHELL DETECTOR
       nix_shell = {
@@ -42,44 +94,18 @@
         format = "via [$symbol$state]($style) ";
       };
 
-      # 🧠 RAM MODULES (DYNAMIC STYLING LAYER)
-      custom.ram_green = {
-        command = "free | awk '/Mem:/ {print int(($3/$2)*100)}'";
-        when = "test $(free | awk '/Mem:/ {print int(($3/$2)*100)}') -lt 80";
-        style = "bold #40e040"; # Vibrant Green hex bypass code
-        format = "[🧠 $(free | awk '/Mem:/ {printf \"%.1fGB (%d%%)\", $3/1024/1024, ($3/$2)*100}')]($style) ";
-      };
-      custom.ram_yellow = {
-        command = "free | awk '/Mem:/ {print int(($3/$2)*100)}'";
-        when = "test $(free | awk '/Mem:/ {print int(($3/$2)*100)}') -ge 80 && test $(free | awk '/Mem:/ {print int(($3/$2)*100)}') -lt 90";
-        style = "bold #f0f000"; # Vibrant Yellow hex bypass code
-        format = "[🧠 $(free | awk '/Mem:/ {printf \"%.1fGB (%d%%)\", $3/1024/1024, ($3/$2)*100}')]($style) ";
-      };
-      custom.ram_red = {
-        command = "free | awk '/Mem:/ {print int(($3/$2)*100)}'";
-        when = "test $(free | awk '/Mem:/ {print int(($3/$2)*100)}') -ge 90";
-        style = "bold #f04040"; # Vibrant Red hex bypass code
-        format = "[🧠 $(free | awk '/Mem:/ {printf \"%.1fGB (%d%%)\", $3/1024/1024, ($3/$2)*100}')]($style) ";
+      # ⚡ CPU METRICS
+      custom.cpu_telemetry = {
+        when = "true";
+        command = "echo $STARSHIP_CPU_TEXT";
+        format = "[⚡ $output](bold $STARSHIP_CPU_COLOR) ";
       };
 
-      # ⚡ CPU MODULES (DYNAMIC STYLING LAYER)
-      custom.cpu_green = {
-        command = "top -b -n1 | awk '/^%Cpu/ {print int(100 - $7)}'";
-        when = "test $(top -b -n1 | awk '/^%Cpu/ {print int(100 - $7)}') -lt 80";
-        style = "bold #40e040";
-        format = "[⚡ $(top -b -n1 | awk '/^%Cpu/ {print int(100 - $7)}')%]($style) ";
-      };
-      custom.cpu_yellow = {
-        command = "top -b -n1 | awk '/^%Cpu/ {print int(100 - $7)}'";
-        when = "test $(top -b -n1 | awk '/^%Cpu/ {print int(100 - $7)}') -ge 80 && test $(top -b -n1 | awk '/^%Cpu/ {print int(100 - $7)}') -lt 90";
-        style = "bold #f0f000";
-        format = "[⚡ $(top -b -n1 | awk '/^%Cpu/ {print int(100 - $7)}')%]($style) ";
-      };
-      custom.cpu_red = {
-        command = "top -b -n1 | awk '/^%Cpu/ {print int(100 - $7)}'";
-        when = "test $(top -b -n1 | awk '/^%Cpu/ {print int(100 - $7)}') -ge 90";
-        style = "bold #f04040";
-        format = "[⚡ $(top -b -n1 | awk '/^%Cpu/ {print int(100 - $7)}')%]($style) ";
+      # 🧠 RAM METRICS
+      custom.ram_telemetry = {
+        when = "true";
+        command = "echo $STARSHIP_RAM_TEXT";
+        format = "[🧠 $output](bold $STARSHIP_RAM_COLOR) ";
       };
 
       # Sets up standard crisp command prompt arrows at the end
