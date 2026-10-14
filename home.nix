@@ -83,8 +83,8 @@
             # Calculates real-time instantaneous system load percentage
             pct=5;
             
-            if (pct >= 4)      color=red;
-            else if (pct >= 3) color=yellow;
+            if (pct >= 10)      color=red;
+            else if (pct >= 6) color=yellow;
             else                color=green;
             
             printf " %s⚡ %d%%%s ", color, pct, reset;
