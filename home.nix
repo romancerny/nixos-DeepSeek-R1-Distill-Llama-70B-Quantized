@@ -21,6 +21,14 @@
       rebuild = "sudo nixos-rebuild switch --flake /etc/nixos/#beast-kf";
       gc = "nix-collect-garbage -d";
     };
+
+    # 🛠️ FALLBACK HOOK FOR MODERN NIX SHELL COMMANDS
+    initExtra = ''
+      # If we are inside 'nix shell' and the variable isn't set, force-populate it
+      if [[ -z "$IN_NIX_SHELL" && "$PATH" == *"/nix/store/"*"-env/bin"* ]]; then
+        export IN_NIX_SHELL="impure"
+      fi
+    '';
   };
 
   # 🚀 STARSHIP PROMPT CONFIGURATION
