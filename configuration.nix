@@ -125,7 +125,8 @@ in
     enable = true;
     settings = {
       default_session = {
-        command = "${pkgs.greetd.tuigreet}/bin/tuigreet --time --remember --cmd sway";
+        # 🌟 FIXED: Evaluates directly to pkgs.tuigreet path safely
+        command = "${pkgs.tuigreet}/bin/tuigreet --time --remember --cmd sway";
         user = "greeter";
       };
     };
