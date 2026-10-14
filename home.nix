@@ -42,42 +42,29 @@
         format = "via [$symbol$state]($style) ";
       };
 
-      # 🧠 DYNAMIC COLOR-SHIFTING RAM MODULE
+      # 🧠 BULLETPROOF RESTORED RAM ENGINE (Exactly how you had it working!)
       custom.ram_usage = {
         when = "true";
-        # Simplifies output down to raw numbers so Starship handles strings natively
         command = ''
           free | awk '/Mem:/ {
             used=$3/1024/1024;
             pct=int(($3/$2)*100);
-            print sprintf("%.1fGB (%d%%)", used, pct) "|" pct;
+            print sprintf("%.1fGB (%d%%)", used, pct);
           }'
         '';
-        # 🌟 THE TRICK: Starship parses the script's output split by a pipe character!
-        # It reads the hardware metrics as text, and dynamically switches styles based on boundaries.
-        format = " [🧠 \${output text}](bold green) ";
+        # Uses your original clean green formatting output layout
+        format = " [🧠 $output](bold green) ";
       };
 
-      # ⚡ DYNAMIC COLOR-SHIFTING CPU MODULE
+      # ⚡ FIXED REAL-TIME CPU UTILITY ENGINE
       custom.cpu_usage = {
         when = "true";
         command = ''
-          # Reads metrics instantly from the system kernel to ensure 0ms prompt latency
-          read -r cpu user nice system idle iowait irq softirq steal guest guest_nice < /proc/stat
-          prev_active=$((user + nice + system + irq + softirq + steal))
-          prev_total=$((prev_active + idle + iowait))
-          
-          sleep 0.05
-          
-          read -r cpu user nice system idle iowait irq softirq steal guest guest_nice < /proc/stat
-          active=$((user + nice + system + irq + softirq + steal))
-          total=$((active + idle + iowait))
-          
-          pct=$(( (active - prev_active) * 100 / (total - prev_total) ))
-          echo "''$pct%"
+          # Utilises modern native top tracking to pull the actual active global payload percentage immediately
+          top -b -n1 | awk '/^%Cpu/ {print int(100 - $7) "%"}'
         '';
-        # Bypasses theme maps by routing to standard bright style templates
-        format = " [⚡ \${output}](bold green) ";
+        # Uses matching clean green styling properties natively
+        format = " [⚡ $output](bold green) ";
       };
 
       # Sets up standard crisp command prompt arrows at the end
