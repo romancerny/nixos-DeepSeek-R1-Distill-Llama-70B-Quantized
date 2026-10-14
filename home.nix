@@ -26,7 +26,7 @@
         format = "via [$symbol$state]($style) ";
       };
 
-      # 🧠 LIGHTWEIGHT HIGH-PERFORMANCE RAM MODULE (Dark Green Hex Format)
+      # 🧠 LIGHTWEIGHT HIGH-PERFORMANCE RAM MODULE (Dark Khaki Green Hex Format)
       custom.ram_usage = {
         when = "true";
         command = ''
@@ -37,7 +37,7 @@
             printf "%d/%d GiB %d%%", used, total, pct;
           }'
         '';
-        style = "bold #2e7d32"; # 🌟 FIXED: True forest dark green hex code that ignores system theme overrides
+        style = "bold #556b2f"; # 🌟 FIXED: Hardcoded Dark Khaki Green/Dark Olive hex code
         format = "[🧠 $output]($style) ";
       };
 
