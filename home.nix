@@ -14,8 +14,6 @@
     autosuggestion.enable = true;
     syntaxHighlighting.enable = true;
     autocd = true;
-
-    # Move your legacy aliases here to make them portable
     shellAliases = {
       ll = "ls -la";
       rebuild = "sudo nixos-rebuild switch --flake /etc/nixos/#beast-kf";
@@ -26,13 +24,9 @@
   # 🚀 STARSHIP PROMPT CONFIGURATION
   programs.starship = {
     enable = true;
-    enableZshIntegration = true; # Seamlessly hooks into your Zsh shell context
-
+    enableZshIntegration = true;
     settings = {
-      # Customises the overall visual sequence of your prompt layout
       format = "$directory$git_branch$nix_shell\${custom.ram_usage}$character";
-
-      # ❄️ NATIVE NIX-SHELL / DEV-SHELL DETECTOR
       nix_shell = {
         disabled = false;
         symbol = "❄️ ";
@@ -41,8 +35,6 @@
         pure_msg = "pure";
         format = "via [$symbol$state]($style) ";
       };
-
-      # 🧠 LIGHTWEIGHT HIGH-PERFORMANCE RAM MODULE (Dark Khaki Green Hex Format)
       custom.ram_usage = {
         when = "true";
         command = ''
@@ -53,17 +45,13 @@
             printf "%d/%d GiB %d%%", used, total, pct;
           }'
         '';
-        style = "bold #556b2f"; # 🌟 FIXED: Hardcoded Dark Khaki Green/Dark Olive hex code
+        style = "bold #556b2f";
         format = "[🧠 $output]($style) ";
       };
-
-      # Sets up standard crisp command prompt arrows at the end
       character = {
         success_symbol = "[➜](bold green)";
         error_symbol = "[➜](bold red)";
       };
-
-      # Sleek, clean directory structure formatting
       directory = {
         truncation_length = 3;
         style = "bold cyan";
@@ -77,7 +65,7 @@
     extraConfig = ''
       local wezterm = require 'wezterm'
       local config = wezterm.config_builder()
-      config.enable_wayland = false
+      config.enable_wayland = true
       config.front_end = "WebGpu"
       config.hide_tab_bar_if_only_one_tab = true
       config.window_background_opacity = 0.9
@@ -86,40 +74,221 @@
     '';
   };
 
-  # 🖥️ GNOME CUSTOM SHORTCUT ENGINE
-  dconf.settings = {
-    # Keep the default workspace behavior safe
-    "org/gnome/mutter" = {
-      "workspaces-only-on-primary" = true;
-    };
-
-    # Define the existence of custom keybinding slots
-    "org/gnome/settings-daemon/plugins/media-keys" = {
-      custom-keybindings = [
-        "/org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/custom0/"
-        "/org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/custom1/"
+  # 🖥️ NATIVE SWAY COMPOSITOR ENVIRONMENT MANAGEMENT
+  wayland.windowManager.sway = {
+    enable = true;
+    config = {
+      modifier = "Mod4"; 
+      terminal = "wezterm";
+      startup = [
+        { command = "waybar"; }
       ];
-    };
-
-    # Binding Slot 0: Force-switch All Monitors Right
-    "org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/custom0" = {
-      name = "Switch All Monitors Workspace Right";
-      binding = "<Super><Alt>Right";
-      command = "bash -c 'gsettings set org.gnome.mutter workspaces-only-on-primary false; dbus-send --session --type=method_call --dest=org.gnome.Shell /org/gnome/Shell org.gnome.Shell.Eval string:\"wm.actionMoveWorkspaceRight();\"'; gsettings set org.gnome.mutter workspaces-only-on-primary true";
-    };
-
-    # Binding Slot 1: Force-switch All Monitors Left
-    "org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/custom1" = {
-      name = "Switch All Monitors Workspace Left";
-      binding = "<Super><Alt>Left";
-      command = "bash -c 'gsettings set org.gnome.mutter workspaces-only-on-primary false; dbus-send --session --type=method_call --dest=org.gnome.Shell /org/gnome/Shell org.gnome.Shell.Eval string:\"wm.actionMoveWorkspaceLeft();\"'; gsettings set org.gnome.mutter workspaces-only-on-primary true";
+      bars = [];
+      keybindings = let 
+        modifier = config.wayland.windowManager.sway.config.modifier;
+      in pkgs.lib.mkOptionDefault {
+        "${modifier}+Mod1+Right" = "workspace next";
+        "${modifier}+Mod1+Left" = "workspace prev";
+        # 🚀 ROFI INTEGRATION HOTKEY: Overrides default menu launcher cleanly
+        "${modifier}+d" = "exec rofi -show drun";
+      };
     };
   };
 
-  # Stylix targets block
-  stylix.targets.wezterm.enable = true;
+  # 🚀 ADVANCED CUSTOM POWERED ROFI ENGINE
+  programs.rofi = {
+    enable = true;
+    package = pkgs.rofi-wayland; # Native Wayland build wrapper avoiding XWayland bottlenecks
+    plugins = [ pkgs.rofi-calc ];
+    terminal = "wezterm";
+    extraConfig = {
+      modi = "drun,run,calc";
+      show-icons = true;
+      icon-theme = "Papirus";
+      drun-format = "{name}";
+      disable-history = false;
+      sidebar-mode = false;
+    };
+    
+    # 🎨 THE HIGH-END CUSTOM RASI OVERRIDE ENGINE
+    theme = let
+      inherit (config.lib.formats.rasi) mkLiteral;
+    in {
+      "*" = {
+        bg-color = mkLiteral "#141718ef";
+        bg-alt = mkLiteral "#2d3133";
+        fg-color = mkLiteral "#d1c7a3";
+        fg-dim = mkLiteral "#706853";
+        accent-color = mkLiteral "#a89984";
+        
+        background-color = mkLiteral "transparent";
+        text-color = mkLiteral "@fg-color";
+        font = "JetBrainsMono Nerd Font 11";
+      };
 
-  # 🛠️ SILENCE WARNINGS: Prevents Stylix from trying to compile deprecated Rofi and QT options in your profile
+      "window" = {
+        location = mkLiteral "center";
+        anchor = mkLiteral "center";
+        fullscreen = mkLiteral "false";
+        width = mkLiteral "640px";
+        x-offset = mkLiteral "0px";
+        y-offset = mkLiteral "0px";
+        
+        enabled = mkLiteral "true";
+        border = mkLiteral "1px solid";
+        border-color = mkLiteral "@accent-color";
+        border-radius = mkLiteral "8px";
+        background-color = mkLiteral "@bg-color";
+        cursor = mkLiteral "default";
+      };
+
+      "mainbox" = {
+        enabled = mkLiteral "true";
+        spacing = mkLiteral "12px";
+        padding = mkLiteral "24px";
+        children = map mkLiteral [ "inputbar" "listview" ];
+      };
+
+      "inputbar" = {
+        enabled = mkLiteral "true";
+        spacing = mkLiteral "8px";
+        children = map mkLiteral [ "prompt" "entry" ];
+        background-color = mkLiteral "@bg-alt";
+        border-radius = mkLiteral "6px";
+        padding = mkLiteral "8px 12px";
+      };
+
+      "prompt" = {
+        enabled = mkLiteral "true";
+        text-color = mkLiteral "@accent-color";
+        font = "JetBrainsMono Nerd Font Bold 11";
+      };
+
+      "entry" = {
+        enabled = mkLiteral "true";
+        placeholder = "Search Applications...";
+        placeholder-color = mkLiteral "@fg-dim";
+        cursor = mkLiteral "text";
+      };
+
+      "listview" = {
+        enabled = mkLiteral "true";
+        columns = mkLiteral "1";
+        lines = mkLiteral "8";
+        cycle = mkLiteral "true";
+        dynamic = mkLiteral "true";
+        scrollbar = mkLiteral "false";
+        layout = mkLiteral "vertical";
+        spacing = mkLiteral "6px";
+        fixed-height = mkLiteral "true";
+      };
+
+      "element" = {
+        enabled = mkLiteral "true";
+        spacing = mkLiteral "10px";
+        padding = mkLiteral "8px";
+        border-radius = mkLiteral "4px";
+        cursor = mkLiteral "pointer";
+      };
+
+      "element normal.normal" = {
+        background-color = mkLiteral "transparent";
+        text-color = mkLiteral "@fg-color";
+      };
+
+      "element selected.normal" = {
+        background-color = mkLiteral "@bg-alt";
+        text-color = mkLiteral "@fg-color";
+        border = mkLiteral "1px solid";
+        border-color = mkLiteral "@accent-color";
+      };
+
+      "element-icon" = {
+        size = mkLiteral "24px";
+        cursor = mkLiteral "inherit";
+      };
+
+      "element-text" = {
+        vertical-align = mkLiteral "0.5";
+        cursor = mkLiteral "inherit";
+      };
+    };
+  };
+
+  # 📊 COMPREHENSIVE WAYBAR METRIC DISPLAY SYSTEM
+  programs.waybar = {
+    enable = true;
+    settings = {
+      mainBar = {
+        layer = "top";
+        position = "top";
+        height = 32;
+        spacing = 4;
+
+        modules-left = [ "custom/nix" "battery" "backlight" "pulseaudio" "pulseaudio#microphone" "cpu" "memory" ];
+        modules-center = [ "sway/workspaces" ];
+        modules-right = [ "custom/coffee" "clock" "network" ];
+
+        "custom/nix" = { format = "❄️"; tooltip = false; };
+        "battery" = {
+          states = { warning = 30; critical = 15; };
+          format = "{capacity}% 🔋";
+          format-charging = "{capacity}% ⚡";
+          format-plugged = "{capacity}% 🔌";
+        };
+        "backlight" = { format = "{percent}% 🌓"; };
+        "pulseaudio" = { format = "{volume}% 🎧"; format-muted = "🔇"; };
+        "pulseaudio#microphone" = {
+          format = "{volume}% 🎙️";
+          format-source-muted = "🎙️ MUTED";
+          source = "default-audio-source";
+        };
+        "cpu" = { format = "{usage}% ⚙️"; tooltip = true; };
+        "memory" = { format = "{percentage}% ☰"; tooltip = true; };
+
+        "sway/workspaces" = {
+          disable-scroll = true;
+          all-outputs = true;
+          format = "{icon} {name}";
+          format-icons = {
+            "1" = "🔖"; "2" = "🔄"; "3" = "💻"; "4" = "📁"; "5" = "🖌️";
+            "6" = "⚙️"; "7" = "💵"; "8" = "🎓"; "9" = "🎮";
+          };
+        };
+
+        "custom/coffee" = { format = "☕"; tooltip = false; };
+        "clock" = { format = "{:%a %Y-%m-%d %I:%M:%S %p}"; interval = 1; };
+        "network" = {
+          format-wifi = "📶";
+          format-ethernet = "🔌";
+          format-disconnected = "⚠️";
+          tooltip-format = "{ifname} via {gwaddr}";
+        };
+      };
+    };
+
+    style = ''
+      window#waybar {
+        background-color: rgba(20, 23, 24, 0.95);
+        border-bottom: 1px solid #2d3133;
+        color: #d1c7a3;
+        font-family: "JetBrainsMono Nerd Font", monospace;
+        font-size: 13px;
+      }
+      #modules-left, #modules-center, #modules-right { padding: 0 8px; }
+      .modules-left > widget, .modules-right > widget { margin: 0 6px; }
+      #workspaces button { padding: 0 6px; color: #706853; background-color: transparent; border: none; }
+      #workspaces button.focused { color: #d1c7a3; border-bottom: 2px solid #a89984; }
+      #workspaces button.urgent { color: #db4b4b; }
+    '';
+  };
+
+  # Stylix targets block redirection
+  stylix.targets.wezterm.enable = true;
+  stylix.targets.sway.enable = true;
+  stylix.targets.waybar.enable = true;
+
+  # Explicit override ensuring manual theme compilation executes safely 
   stylix.targets.rofi.enable = false;
   stylix.targets.qt.enable = false;
 }
