@@ -89,7 +89,6 @@
       in pkgs.lib.mkOptionDefault {
         "${modifier}+Mod1+Right" = "workspace next";
         "${modifier}+Mod1+Left" = "workspace prev";
-        # 🚀 ROFI INTEGRATION HOTKEY: Overrides default menu launcher cleanly
         "${modifier}+d" = "exec rofi -show drun";
       };
     };
@@ -98,7 +97,7 @@
   # 🚀 ADVANCED CUSTOM POWERED ROFI ENGINE
   programs.rofi = {
     enable = true;
-    package = pkgs.rofi-wayland; # Native Wayland build wrapper avoiding XWayland bottlenecks
+    package = pkgs.rofi-wayland; 
     plugins = [ pkgs.rofi-calc ];
     terminal = "wezterm";
     extraConfig = {
@@ -110,7 +109,6 @@
       sidebar-mode = false;
     };
     
-    # 🎨 THE HIGH-END CUSTOM RASI OVERRIDE ENGINE
     theme = let
       inherit (config.lib.formats.rasi) mkLiteral;
     in {
@@ -267,6 +265,7 @@
       };
     };
 
+    # 🌟 FIXED: Pure raw string declaration to isolate CSS scopes cleanly away from Nix evaluation mechanics
     style = ''
       window#waybar {
         background-color: rgba(20, 23, 24, 0.95);
@@ -288,7 +287,6 @@
   stylix.targets.sway.enable = true;
   stylix.targets.waybar.enable = true;
 
-  # Explicit override ensuring manual theme compilation executes safely 
   stylix.targets.rofi.enable = false;
   stylix.targets.qt.enable = false;
 }
