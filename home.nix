@@ -46,7 +46,7 @@
       memory_usage = {
         disabled = false;
         threshold = 0; 
-        style = "bold dimmed white";
+        style = "bold dimmed green";
         symbol = "🧠 ";
         # 🌟 THE FORMAT: Displays both raw RAM gigabytes AND current consumption percentages
         format = "using [$symbol$ram ($ram_pct)]($style) ";
