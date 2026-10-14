@@ -42,7 +42,7 @@
         format = "via [$symbol$state]($style) ";
       };
 
-      # 🧠 DYNAMIC COLOR-SHIFTING RAM MODULE (Always On)
+      # 🧠 BULLETPROOF DYNAMIC COLOR-SHIFTING RAM MODULE
       custom.ram_usage = {
         when = "true";
         command = ''
@@ -50,45 +50,43 @@
             used=$3/1024/1024;
             pct=int(($3/$2)*100);
             
-            green="\033[1;32m";
-            yellow="\033[1;33m";
-            red="\033[1;31m";
-            reset="\033[0m";
-            
-            if (pct >= 90)      color=red;
-            else if (pct >= 80) color=yellow;
-            else                color=green;
-            
-            printf " %s🧠 %.1fGB (%d%%)%s ", color, used, pct, reset;
+            # Pure literal string formatting
+            if (pct >= 90)      print "\033[1;31musing 🧠 " sprintf("%.1fGB (%d%%)", used, pct) "\033[0m ";
+            else if (pct >= 80) print "\033[1;33musing 🧠 " sprintf("%.1fGB (%d%%)", used, pct) "\033[0m ";
+            else                print "\033[1;32musing 🧠 " sprintf("%.1fGB (%d%%)", used, pct) "\033[0m ";
           }'
         '';
         format = "$output";
       };
 
-      # ⚡ DYNAMIC COLOR-SHIFTING CPU MODULE (Always On)
+      # ⚡ BULLETPROOF DYNAMIC COLOR-SHIFTING CPU MODULE
       custom.cpu_usage = {
         when = "true";
         command = ''
-          # Reads metrics instantly from the system kernel to ensure 0ms prompt latency
-          awk '/cpu / {
-            idle=$5; 
-            total=0; 
-            for(i=2;i<=8;i++) total+=$i; 
-            
-            green="\033[1;32m";
-            yellow="\033[1;33m";
-            red="\033[1;31m";
-            reset="\033[0m";
-            
-            # Calculates real-time instantaneous system load percentage
-            pct=5;
-            
-            if (pct >= 10)      color=red;
-            else if (pct >= 6) color=yellow;
-            else                color=green;
-            
-            printf " %s⚡ %d%%%s ", color, pct, reset;
-          }' /proc/stat
+          # Reads real-time instantaneous system load delta metrics safely from the system kernel
+          read -r cpu user nice system idle iowait irq softirq steal guest guest_nice < /proc/stat
+          
+          # Calculate current active and total blocks
+          prev_active=$((user + nice + system + irq + softirq + steal))
+          prev_total=$((prev_active + idle + iowait))
+          
+          # Micro-sleep delta to measure processing cycle movements accurately
+          sleep 0.1
+          
+          read -r cpu user nice system idle iowait irq softirq steal guest guest_nice < /proc/stat
+          active=$((user + nice + system + irq + softirq + steal))
+          total=$((active + idle + iowait))
+          
+          # Evaluate load percentage over the measured temporal gap
+          pct=$(( (active - prev_active) * 100 / (total - prev_total) ))
+          
+          if [ "''$pct" -ge 90 ]; then
+            printf "\033[1;31mat ⚡ %d%%\033[0m " "''$pct"
+          elif [ "''$pct" -ge 80 ]; then
+            printf "\033[1;33mat ⚡ %d%%\033[0m " "''$pct"
+          else
+            printf "\033[1;32mat ⚡ %d%%\033[0m " "''$pct"
+          fi
         '';
         format = "$output";
       };
