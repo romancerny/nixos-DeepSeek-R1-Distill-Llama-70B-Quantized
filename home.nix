@@ -51,9 +51,9 @@
             pct=int(($3/$2)*100);
             
             # Pure literal string formatting
-            if (pct >= 90)      print "\033[1;31musing 🧠 " sprintf("%.1fGB (%d%%)", used, pct) "\033[0m ";
-            else if (pct >= 80) print "\033[1;33musing 🧠 " sprintf("%.1fGB (%d%%)", used, pct) "\033[0m ";
-            else                print "\033[1;32musing 🧠 " sprintf("%.1fGB (%d%%)", used, pct) "\033[0m ";
+            if (pct >= 90)      print "\033[1;31m 🧠 " sprintf("%.1fGB (%d%%)", used, pct) "\033[0m ";
+            else if (pct >= 80) print "\033[1;33m 🧠 " sprintf("%.1fGB (%d%%)", used, pct) "\033[0m ";
+            else                print "\033[1;32m 🧠 " sprintf("%.1fGB (%d%%)", used, pct) "\033[0m ";
           }'
         '';
         format = "$output";
