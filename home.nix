@@ -39,7 +39,7 @@
         style = "bold blue";
         impure_msg = "impure";
         pure_msg = "pure";
-        format = "via [$symbol$state] ($style)";
+        format = "via [$symbol$state]($style) ";
       };
 
       # Sets up standard crisp command prompt arrows at the end
