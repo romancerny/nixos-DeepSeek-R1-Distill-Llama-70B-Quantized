@@ -201,12 +201,16 @@ in
   # ---------------------------------------------------------------------
   # 👥 DUAL-USER PROFILE DEFINITIONS
   # ---------------------------------------------------------------------
+
+  # Register the shell system-wide to handle runtime paths and completions
+  programs.zsh.enable = true;
+
   users.users = {
     roman = {
       isNormalUser = true;
       description = "Roman System Administrator";
       extraGroups = [ "networkmanager" "wheel" "video" "libvirtd" ]; 
-      shell = pkgs.bash;
+      shell = pkgs.zsh;
       initialPassword = "ChangeThisPassword123!"; 
     };
 
@@ -214,7 +218,7 @@ in
       isNormalUser = true;
       description = "Isolated AI Execution Worker";
       group = "ai-sandbox";
-      shell = pkgs.bash;
+      shell = pkgs.zsh;
       initialPassword = "ChangeThisPassword456!"; 
     };
   };
