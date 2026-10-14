@@ -97,7 +97,7 @@
   # 🚀 ADVANCED CUSTOM POWERED ROFI ENGINE
   programs.rofi = {
     enable = true;
-    package = pkgs.rofi-wayland; 
+    package = pkgs.rofi; # 🌟 FIXED: Points cleanly to the merged package supporting Wayland native execution
     plugins = [ pkgs.rofi-calc ];
     terminal = "wezterm";
     extraConfig = {
@@ -265,7 +265,6 @@
       };
     };
 
-    # 🌟 FIXED: Pure raw string declaration to isolate CSS scopes cleanly away from Nix evaluation mechanics
     style = ''
       window#waybar {
         background-color: rgba(20, 23, 24, 0.95);
