@@ -59,7 +59,7 @@
             else if (pct >= 80) color=yellow;
             else                color=green;
             
-            printf "using %s🧠 %.1fGB (%d%%)%s ", color, used, pct, reset;
+            printf " %s🧠 %.1fGB (%d%%)%s ", color, used, pct, reset;
           }'
         '';
         format = "$output";
@@ -83,11 +83,11 @@
             # Calculates real-time instantaneous system load percentage
             pct=5;
             
-            if (pct >= 90)      color=red;
-            else if (pct >= 80) color=yellow;
+            if (pct >= 4)      color=red;
+            else if (pct >= 3) color=yellow;
             else                color=green;
             
-            printf "at %s⚡ %d%%%s ", color, pct, reset;
+            printf " %s⚡ %d%%%s ", color, pct, reset;
           }' /proc/stat
         '';
         format = "$output";
