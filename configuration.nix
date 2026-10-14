@@ -112,7 +112,6 @@ in
   
   programs.sway = {
     enable = true;
-    # 🌟 FIXED: Instructs the system wrapper to automatically bypass the Nvidia safety blocker globally
     extraOptions = [ "--unsupported-gpu" ];
     extraPackages = with pkgs; [
       swaylock
@@ -120,6 +119,8 @@ in
       wl-clipboard
       mako 
       alacritty
+      # 🌟 FIXED: Ensures the background layout package is present to stop Stylix wallpaper rendering hangs
+      swaybg 
     ];
   };
 
@@ -127,7 +128,6 @@ in
     enable = true;
     settings = {
       default_session = {
-        # 🌟 FIXED: Passes the explicit GPU argument straight to the command layer inside tuigreet
         command = "${pkgs.tuigreet}/bin/tuigreet --time --remember --cmd 'sway --unsupported-gpu'";
         user = "greeter";
       };
@@ -156,8 +156,9 @@ in
     XDG_SESSION_TYPE = "wayland";
     XDG_CURRENT_DESKTOP = "sway";
     MOZ_ENABLE_WAYLAND = "1";
+    # 🌟 FIXED: Standardizes hardware rendering cursor limits across multi-gpu bridges
     WLR_NO_HARDWARE_CURSORS = "1"; 
-    # 🌟 FIXED: Injects direct Wayland backend hooks for proprietary driver stability
+    WLR_RENDERER = "vulkan"; # Forces Vulkan instead of conflicting EGL pathways
     GBM_BACKEND = "nvidia-drm";
     __GLX_VENDOR_LIBRARY_NAME = "nvidia";
   };
@@ -218,7 +219,8 @@ in
     roman = {
       isNormalUser = true;
       description = "Roman System Administrator";
-      extraGroups = [ "networkmanager" "wheel" "video" "libvirtd" "input" ]; 
+      # 🌟 FIXED: Added 'tty' group membership to guarantee TTY shortcut breakout capability 
+      extraGroups = [ "networkmanager" "wheel" "video" "libvirtd" "input" "tty" ]; 
       shell = pkgs.zsh;
       initialPassword = "ChangeThisPassword123!"; 
     };
