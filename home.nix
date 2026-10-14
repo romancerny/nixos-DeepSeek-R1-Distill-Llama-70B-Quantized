@@ -21,12 +21,38 @@
       rebuild = "sudo nixos-rebuild switch --flake /etc/nixos/#beast-kf";
       gc = "nix-collect-garbage -d";
     };
+  };
 
-    # Lightweight prompt integration using default frameworks
-    oh-my-zsh = {
-      enable = true;
-      plugins = [ "git" "sudo" ];
-      theme = "robbyrussell";
+  # 🚀 STARSHIP PROMPT CONFIGURATION
+  programs.starship = {
+    enable = true;
+    enableZshIntegration = true; # Seamlessly hooks into your Zsh shell context
+
+    settings = {
+      # Customises the overall visual sequence of your prompt layout
+      format = "$directory$git_branch$nix_shell$character";
+
+      # ❄️ NATIVE NIX-SHELL SNOWFLAKE CONFIGURATION
+      nix_shell = {
+        disabled = false;
+        symbol = "❄️ ";
+        style = "bold blue";
+        impure_msg = "impure";
+        pure_msg = "pure";
+        format = "via [$symbol$state]($style) ";
+      };
+
+      # Sets up standard crisp command prompt arrows at the end
+      character = {
+        success_symbol = "[➜](bold green)";
+        error_symbol = "[➜](bold red)";
+      };
+
+      # Sleek, clean directory structure formatting
+      directory = {
+        truncation_length = 3;
+        style = "bold cyan";
+      };
     };
   };
 
