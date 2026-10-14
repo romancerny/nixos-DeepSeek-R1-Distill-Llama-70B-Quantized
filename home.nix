@@ -85,10 +85,8 @@
       ];
       bars = [];
       
-      # 🌟 FIXED: Declarative multi-monitor output configuration engine
+      # 🌟 FIXED: Conflict resolved by removing manual bg entry and leaving layout options active
       output = {
-        "*" = { bg = "${config.home.homeDirectory}/.config/wallpapers/current.png fill"; };
-        # Configures the external 4K HDMI screen cleanly at native resolution and scaling factors
         "HDMI-A-1" = {
           res = "3840x2160";
           scale = "1.5";
@@ -102,7 +100,6 @@
         "${modifier}+Mod1+Right" = "workspace next";
         "${modifier}+Mod1+Left" = "workspace prev";
         "${modifier}+d" = "exec rofi -show drun";
-        # 🌟 EMERGENCY SHORTCUT: Force exit Sway session back into console/tuigreet completely clean
         "${modifier}+Shift+e" = "exec swaymsg exit";
       };
     };
