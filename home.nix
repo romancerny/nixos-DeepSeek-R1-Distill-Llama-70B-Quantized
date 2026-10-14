@@ -21,14 +21,6 @@
       rebuild = "sudo nixos-rebuild switch --flake /etc/nixos/#beast-kf";
       gc = "nix-collect-garbage -d";
     };
-
-    # 🛠️ FALLBACK HOOK FOR MODERN NIX SHELL COMMANDS
-    initExtra = ''
-      # If we are inside 'nix shell' and the variable isn't set, force-populate it
-      if [[ -z "$IN_NIX_SHELL" && "$PATH" == *"/nix/store/"*"-env/bin"* ]]; then
-        export IN_NIX_SHELL="impure"
-      fi
-    '';
   };
 
   # 🚀 STARSHIP PROMPT CONFIGURATION
@@ -40,14 +32,14 @@
       # Customises the overall visual sequence of your prompt layout
       format = "$directory$git_branch$nix_shell$character";
 
-      # ❄️ NATIVE NIX-SHELL SNOWFLAKE CONFIGURATION
+      # ❄️ NATIVE NIX-SHELL / DEV-SHELL DETECTOR
       nix_shell = {
         disabled = false;
         symbol = "❄️ ";
         style = "bold blue";
         impure_msg = "impure";
         pure_msg = "pure";
-        format = "via [$symbol$state]($style) ";
+        format = "via [$symbol$state] ($style)";
       };
 
       # Sets up standard crisp command prompt arrows at the end
