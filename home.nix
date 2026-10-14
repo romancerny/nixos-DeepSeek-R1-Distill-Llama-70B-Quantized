@@ -30,7 +30,7 @@
 
     settings = {
       # Customises the overall visual sequence of your prompt layout
-      format = "$directory$git_branch$nix_shell$character";
+      format = "$directory$git_branch$nix_shell$memory_usage$character";
 
       # ❄️ NATIVE NIX-SHELL / DEV-SHELL DETECTOR
       nix_shell = {
@@ -45,7 +45,6 @@
       # 🧠 MEMORY USAGE MODULE ACTIVATION (With Percentage Allocation)
       memory_usage = {
         disabled = false;
-        # 🌟 THE FIX: Nix requires floating points written as a float (e.g. -1.0) to route safely to Starship's type config!
         threshold = -1.0; 
         style = "bold dimmed white";
         symbol = "🧠 ";
