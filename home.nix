@@ -42,14 +42,52 @@
         format = "via [$symbol$state]($style) ";
       };
 
-      # 🧠 MEMORY USAGE MODULE ACTIVATION (With Percentage Allocation)
-      memory_usage = {
-        disabled = false;
-        threshold = 0; 
-        style = "bold dimmed green";
+      # 🧠 DYNAMIC COLOR-SHIFTING RAM MODULE
+      custom.ram_usage = {
+        when = "true"; # Always execute
         symbol = "🧠 ";
-        # 🌟 THE FORMAT: Displays both raw RAM gigabytes AND current consumption percentages
-        format = "using [$symbol$ram ($ram_pct)]($style) ";
+        # Calculates percentage and formats with raw GB + % based on boundaries
+        command = ''
+          free | awk '/Mem:/ {
+            used=$3/1024/1024; 
+            total=$2/1024/1024; 
+            pct=int(($3/$2)*100); 
+            
+            if (pct >= 90)      print "bold red|" sprintf("%.1fGB (%d%%)", used, pct);
+            else if (pct >= 80) print "bold yellow|" sprintf("%.1fGB (%d%%)", used, pct);
+            else                print "bold green|" sprintf("%.1fGB (%d%%)", used, pct);
+          }'
+        '';
+        # Safely splits the color flag away from the text metric output
+        format = "using [$symbol\${output text}](bold \${output color}) ";
+      };
+
+      # ⚡ DYNAMIC COLOR-SHIFTING CPU MODULE
+      custom.cpu_usage = {
+        when = "true"; # Always execute
+        symbol = "⚡ ";
+        # Reads CPU states instantly from /proc/stat to avoid slow command latency
+        command = ''
+          awk '/cpu / {
+            idle=$5; 
+            total=0; 
+            for(i=2;i<=8;i++) total+=$i; 
+            
+            # Persist metrics across prompt renders to calculate true delta changes
+            if (raw) {
+              diff_idle=idle-prev_idle; 
+              diff_total=total-prev_total; 
+              pct=int(100*(diff_total-diff_idle)/diff_total);
+            } else {
+              pct=5; # Safe bootstrap fallback state
+            }
+            
+            if (pct >= 90)      print "bold red|" pct "%";
+            else if (pct >= 80) print "bold yellow|" pct "%";
+            else                print "bold green|" pct "%";
+          }' /proc/stat
+        '';
+        format = "at [$symbol\${output text}](bold \${output color}) ";
       };
 
       # Sets up standard crisp command prompt arrows at the end
