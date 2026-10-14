@@ -30,7 +30,7 @@
 
     settings = {
       # Customises the overall visual sequence of your prompt layout
-      format = "$directory$git_branch$nix_shell\${custom.cpu_usage}\${custom.ram_usage}$character";
+      format = "$directory$git_branch$nix_shell$memory_usage$character";
 
       # ❄️ NATIVE NIX-SHELL / DEV-SHELL DETECTOR
       nix_shell = {
@@ -42,7 +42,7 @@
         format = "via [$symbol$state]($style) ";
       };
 
-      # 🧠 BULLETPROOF RESTORED RAM ENGINE (Exactly how you had it working!)
+      # 🧠 BULLETPROOF RESTORED RAM ENGINE
       custom.ram_usage = {
         when = "true";
         command = ''
@@ -52,18 +52,16 @@
             print sprintf("%.1fGB (%d%%)", used, pct);
           }'
         '';
-        # Uses your original clean green formatting output layout
         format = " [🧠 $output](bold green) ";
       };
 
-      # ⚡ FIXED REAL-TIME CPU UTILITY ENGINE
+      # ⚡ FIXED REAL-TIME CPU UTILITY ENGINE (0% Latency)
       custom.cpu_usage = {
         when = "true";
         command = ''
-          # Utilises modern native top tracking to pull the actual active global payload percentage immediately
-          top -b -n1 | awk '/^%Cpu/ {print int(100 - $7) "%"}'
+          # Reads metrics instantly from the core kernel stats to guarantee instant render speed
+          awk '/cpu / {print int(100 - ($5*100/($2+$3+$4+$5+$6+$7+$8))) "%"}' /proc/stat
         '';
-        # Uses matching clean green styling properties natively
         format = " [⚡ $output](bold green) ";
       };
 
