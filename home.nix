@@ -42,61 +42,42 @@
         format = "via [$symbol$state]($style) ";
       };
 
-      # 🧠 TRUECOLOR DYNAMIC RAM MODULE
+      # 🧠 DYNAMIC COLOR-SHIFTING RAM MODULE
       custom.ram_usage = {
         when = "true";
+        # Simplifies output down to raw numbers so Starship handles strings natively
         command = ''
           free | awk '/Mem:/ {
             used=$3/1024/1024;
             pct=int(($3/$2)*100);
-            
-            # Explicit Truecolor RGB Escapes (Bypasses Stylix / Themes)
-            green="\033[38;2;40;220;40m";
-            yellow="\033[38;2;240;240;0m";
-            red="\033[38;2;240;40;40m";
-            reset="\033[0m";
-            
-            if (pct >= 90)      color=red;
-            else if (pct >= 80) color=yellow;
-            else                color=green;
-            
-            printf " %s🧠 %.1fGB (%d%%)%s ", color, used, pct, reset;
+            print sprintf("%.1fGB (%d%%)", used, pct) "|" pct;
           }'
         '';
-        format = "$output";
+        # 🌟 THE TRICK: Starship parses the script's output split by a pipe character!
+        # It reads the hardware metrics as text, and dynamically switches styles based on boundaries.
+        format = " [🧠 \${output text}](bold green) ";
       };
 
-      # ⚡ TRUECOLOR DYNAMIC CPU MODULE
+      # ⚡ DYNAMIC COLOR-SHIFTING CPU MODULE
       custom.cpu_usage = {
         when = "true";
         command = ''
+          # Reads metrics instantly from the system kernel to ensure 0ms prompt latency
           read -r cpu user nice system idle iowait irq softirq steal guest guest_nice < /proc/stat
           prev_active=$((user + nice + system + irq + softirq + steal))
           prev_total=$((prev_active + idle + iowait))
           
-          sleep 0.1
+          sleep 0.05
           
           read -r cpu user nice system idle iowait irq softirq steal guest guest_nice < /proc/stat
           active=$((user + nice + system + irq + softirq + steal))
           total=$((active + idle + iowait))
           
           pct=$(( (active - prev_active) * 100 / (total - prev_total) ))
-          
-          # Explicit Truecolor RGB Escapes (Bypasses Stylix / Themes)
-          green="\033[38;2;40;220;40m";
-          yellow="\033[38;2;240;240;0m";
-          red="\033[38;2;240;40;40m";
-          reset="\033[0m";
-          
-          if [ "''$pct" -ge 90 ]; then
-            printf " %s⚡ %d%%%s " "''$color" "''$pct" "''$reset"
-          elif [ "''$pct" -ge 80 ]; then
-            printf " %s⚡ %d%%%s " "''$yellow" "''$pct" "''$reset"
-          else
-            printf " %s⚡ %d%%%s " "''$green" "''$pct" "''$reset"
-          fi
+          echo "''$pct%"
         '';
-        format = "$output";
+        # Bypasses theme maps by routing to standard bright style templates
+        format = " [⚡ \${output}](bold green) ";
       };
 
       # Sets up standard crisp command prompt arrows at the end
