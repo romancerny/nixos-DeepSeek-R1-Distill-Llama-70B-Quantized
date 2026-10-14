@@ -30,7 +30,7 @@
       memory_usage = {
         disabled = false;
         threshold = 0;              # Pure integer type check (forces it always on)
-        style = "bold white";       # Uniform bold white style
+        style = "bold dark green"; 
         symbol = "🧠 ";
         format = "[$symbol$ram ($ram_pct)]($style) ";
       };
