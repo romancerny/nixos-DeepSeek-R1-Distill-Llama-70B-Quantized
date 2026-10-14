@@ -38,7 +38,8 @@
       # ⚡ HASSLE-FREE REAL-TIME CPU UTILITY ENGINE (Always On, Bold White)
       custom.cpu_usage = {
         when = "true";
-        command = "awk '/cpu / {print int(100 - ($5*100/($2+$3+$4+$5+$6+$7+$8))) \"%\"}' /proc/stat";
+        # Uses vmstat with two fast intervals to accurately measure the current load gap
+        command = "vmstat 1 2 | awk 'END {print (100 - $15) \"%\"}'";
         style = "bold white";       # Uniform bold white style
         format = "[⚡ $output]($style) ";
       };
