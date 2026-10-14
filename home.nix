@@ -26,10 +26,9 @@
         format = "via [$symbol$state]($style) ";
       };
 
-      # 🧠 LIGHTWEIGHT HIGH-PERFORMANCE RAM MODULE (0ms Latency)
+      # 🧠 LIGHTWEIGHT HIGH-PERFORMANCE RAM MODULE (Dark Green Hex Format)
       custom.ram_usage = {
         when = "true";
-        # Pulls live numbers from the kernel and formats them instantly to match your exact pattern
         command = ''
           free -m | awk '/Mem:/ {
             used = int($3 / 1024 + 0.5);
@@ -38,7 +37,7 @@
             printf "%d/%d GiB %d%%", used, total, pct;
           }'
         '';
-        style = "bold green"; # Standard, consistent color definition matching system themes
+        style = "bold #2e7d32"; # 🌟 FIXED: True forest dark green hex code that ignores system theme overrides
         format = "[🧠 $output]($style) ";
       };
 
