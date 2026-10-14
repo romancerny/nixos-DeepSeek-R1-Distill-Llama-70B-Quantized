@@ -42,58 +42,44 @@
         format = "via [$symbol$state]($style) ";
       };
 
-      # 🧠 VIBRANT DYNAMIC COLOR-SHIFTING RAM MODULE (No filler words)
-      custom.ram_usage = {
-        when = "true";
-        command = ''
-          free | awk '/Mem:/ {
-            used=$3/1024/1024;
-            pct=int(($3/$2)*100);
-            
-            # Using clean, bright 256-color system tokens (Green=40, Yellow=226, Red=196)
-            if (pct >= 90)      color="%F{196}";
-            else if (pct >= 80) color="%F{226}";
-            else                color="%F{40}";
-            
-            printf "%s🧠 %.1fGB (%d%%)%%f ", color, used, pct;
-          }'
-        '';
-        format = "$output";
+      # 🧠 RAM MODULES (DYNAMIC STYLING LAYER)
+      custom.ram_green = {
+        command = "free | awk '/Mem:/ {print int(($3/$2)*100)}'";
+        when = "test $(free | awk '/Mem:/ {print int(($3/$2)*100)}') -lt 80";
+        style = "bold #40e040"; # Vibrant Green hex bypass code
+        format = "[🧠 $(free | awk '/Mem:/ {printf \"%.1fGB (%d%%)\", $3/1024/1024, ($3/$2)*100}')]($style) ";
+      };
+      custom.ram_yellow = {
+        command = "free | awk '/Mem:/ {print int(($3/$2)*100)}'";
+        when = "test $(free | awk '/Mem:/ {print int(($3/$2)*100)}') -ge 80 && test $(free | awk '/Mem:/ {print int(($3/$2)*100)}') -lt 90";
+        style = "bold #f0f000"; # Vibrant Yellow hex bypass code
+        format = "[🧠 $(free | awk '/Mem:/ {printf \"%.1fGB (%d%%)\", $3/1024/1024, ($3/$2)*100}')]($style) ";
+      };
+      custom.ram_red = {
+        command = "free | awk '/Mem:/ {print int(($3/$2)*100)}'";
+        when = "test $(free | awk '/Mem:/ {print int(($3/$2)*100)}') -ge 90";
+        style = "bold #f04040"; # Vibrant Red hex bypass code
+        format = "[🧠 $(free | awk '/Mem:/ {printf \"%.1fGB (%d%%)\", $3/1024/1024, ($3/$2)*100}')]($style) ";
       };
 
-      # ⚡ DYNAMIC DIFFERENTIAL CPU MODULE (No filler words, updates instantly)
-      custom.cpu_usage = {
-        when = "true";
-        command = ''
-          read -r _ u1 n1 s1 i1 io1 ir1 si1 st1 _ < /proc/stat
-          sleep 0.05
-          read -r _ u2 n2 s2 i2 io2 ir2 si2 st2 _ < /proc/stat
-          
-          prev_idle=$((i1 + io1))
-          idle=$((i2 + io2))
-          prev_total=$((u1 + n1 + s1 + i1 + io1 + ir1 + si1 + st1))
-          total=$((u2 + n2 + s2 + i2 + io2 + ir2 + si2 + st2))
-          
-          diff_idle=$((idle - prev_idle))
-          diff_total=$((total - prev_total))
-          
-          if [ "$diff_total" -eq 0 ]; then
-            pct=0
-          else
-            pct=$(( 100 * (diff_total - diff_idle) / diff_total ))
-          fi
-          
-          if [ "$pct" -ge 90 ]; then
-            color="%F{196}"
-          elif [ "$pct" -ge 80 ]; then
-            color="%F{226}"
-          else
-            color="%F{40}"
-          fi
-          
-          printf "%s⚡ %d%%%f " "$color" "$pct"
-        '';
-        format = "$output";
+      # ⚡ CPU MODULES (DYNAMIC STYLING LAYER)
+      custom.cpu_green = {
+        command = "top -b -n1 | awk '/^%Cpu/ {print int(100 - $7)}'";
+        when = "test $(top -b -n1 | awk '/^%Cpu/ {print int(100 - $7)}') -lt 80";
+        style = "bold #40e040";
+        format = "[⚡ $(top -b -n1 | awk '/^%Cpu/ {print int(100 - $7)}')%]($style) ";
+      };
+      custom.cpu_yellow = {
+        command = "top -b -n1 | awk '/^%Cpu/ {print int(100 - $7)}'";
+        when = "test $(top -b -n1 | awk '/^%Cpu/ {print int(100 - $7)}') -ge 80 && test $(top -b -n1 | awk '/^%Cpu/ {print int(100 - $7)}') -lt 90";
+        style = "bold #f0f000";
+        format = "[⚡ $(top -b -n1 | awk '/^%Cpu/ {print int(100 - $7)}')%]($style) ";
+      };
+      custom.cpu_red = {
+        command = "top -b -n1 | awk '/^%Cpu/ {print int(100 - $7)}'";
+        when = "test $(top -b -n1 | awk '/^%Cpu/ {print int(100 - $7)}') -ge 90";
+        style = "bold #f04040";
+        format = "[⚡ $(top -b -n1 | awk '/^%Cpu/ {print int(100 - $7)}')%]($style) ";
       };
 
       # Sets up standard crisp command prompt arrows at the end
