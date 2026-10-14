@@ -42,27 +42,60 @@
         format = "via [$symbol$state]($style) ";
       };
 
-      # 🧠 BULLETPROOF RESTORED RAM ENGINE
+      # 🧠 DYNAMIC 3-COLOR RAM ENGINE (Bypasses Stylix via Hex Codes)
       custom.ram_usage = {
         when = "true";
         command = ''
           free | awk '/Mem:/ {
             used=$3/1024/1024;
             pct=int(($3/$2)*100);
-            print sprintf("%.1fGB (%d%%)", used, pct);
+            
+            if (pct >= 90)      color="#f04040"; # Red
+            else if (pct >= 80) color="#f0f000"; # Yellow
+            else                color="#40e040"; # Green
+            
+            print sprintf("%.1fGB (%d%%)", used, pct) "|" color;
           }'
         '';
-        format = " [🧠 $output](bold green) ";
+        # 🌟 THE TRICK: Starship parses output text and applies hex styling natively
+        format = " [🧠 \${output text}](bold \${output color}) ";
       };
 
-      # ⚡ FIXED REAL-TIME CPU UTILITY ENGINE (0% Latency)
+      # ⚡ LIVE 3-COLOR DIFFERENTIAL CPU ENGINE (Bypasses Stylix via Hex Codes)
       custom.cpu_usage = {
         when = "true";
         command = ''
-          # Reads metrics instantly from the core kernel stats to guarantee instant render speed
-          awk '/cpu / {print int(100 - ($5*100/($2+$3+$4+$5+$6+$7+$8))) "%"}' /proc/stat
+          # 🌟 THE FIX: Reads a live 0.05s slice to register actual current usage spikes
+          read -r _ u1 n1 s1 i1 io1 ir1 si1 st1 _ < /proc/stat
+          sleep 0.05
+          read -r _ u2 n2 s2 i2 io2 ir2 si2 st2 _ < /proc/stat
+          
+          prev_idle=$((i1 + io1))
+          idle=$((i2 + io2))
+          
+          prev_total=$((u1 + n1 + s1 + i1 + io1 + ir1 + si1 + st1))
+          total=$((u2 + n2 + s2 + i2 + io2 + ir2 + si2 + st2))
+          
+          diff_idle=$((idle - prev_idle))
+          diff_total=$((total - prev_total))
+          
+          if [ "$diff_total" -eq 0 ]; then
+            pct=0
+          else
+            pct=$(( 100 * (diff_total - diff_idle) / diff_total ))
+          fi
+          
+          if [ "$pct" -ge 90 ]; then
+            color="#f04040"
+          elif [ "$pct" -ge 80 ]; then
+            color="#f0f000"
+          else
+            color="#40e040"
+          fi
+          
+          echo "$pct%|$color"
         '';
-        format = " [⚡ $output](bold green) ";
+        format = " [⚡ \${output text}](bold \${output color}) ";
       };
 
       # Sets up standard crisp command prompt arrows at the end
