@@ -85,7 +85,6 @@
       ];
       bars = [];
       
-      # 🌟 FIXED: Conflict resolved by removing manual bg entry and leaving layout options active
       output = {
         "HDMI-A-1" = {
           res = "3840x2160";
@@ -94,15 +93,33 @@
         };
       };
 
+      input = {
+        "type:keyboard" = {
+          xkb_layout = "gb";
+        };
+      };
+
       keybindings = let 
         modifier = config.wayland.windowManager.sway.config.modifier;
       in pkgs.lib.mkOptionDefault {
+        # 🌟 FIXED: Direct Sway native workspace navigation overrides (Goodbye Gnome!)
         "${modifier}+Mod1+Right" = "workspace next";
         "${modifier}+Mod1+Left" = "workspace prev";
+        
+        # 🌟 FIXED: Explicit terminal shortcut mapping to spin up your terminal immediately
+        "${modifier}+Return" = "exec wezterm";
+        
         "${modifier}+d" = "exec rofi -show drun";
         "${modifier}+Shift+e" = "exec swaymsg exit";
       };
     };
+    
+    extraSessionCommands = ''
+      export SDL_VIDEODRIVER=wayland
+      export QT_QPA_PLATFORM=wayland
+      export QT_WAYLAND_DISABLE_WINDOWDECORATION="1";
+      export _JAVA_AWT_WM_NONREPARENTING=1
+    '';
   };
 
   # 🚀 ADVANCED CUSTOM POWERED ROFI ENGINE
