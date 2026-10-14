@@ -42,13 +42,15 @@
         format = "via [$symbol$state]($style) ";
       };
 
-      # 🧠 MEMORY USAGE MODULE ACTIVATION
+      # 🧠 MEMORY USAGE MODULE ACTIVATION (With Percentage Allocation)
       memory_usage = {
-        disabled = false;           # 🌟 Activates the module natively
-        threshold = -1;              # Shows memory if usage is above 1% (essentially always on)
-        style = "bold dimmed white";# A clean, unobtrusive look that won't clutter your theme colors
-        symbol = "🧠 ";            # Icon anchor for scannability
-        format = "using [$symbol$ram]($style) ";
+        disabled = false;
+        # 🌟 THE FIX: Nix requires floating points written as a float (e.g. -1.0) to route safely to Starship's type config!
+        threshold = -1.0; 
+        style = "bold dimmed white";
+        symbol = "🧠 ";
+        # 🌟 THE FORMAT: Displays both raw RAM gigabytes AND current consumption percentages
+        format = "using [$symbol$ram ($ram_pct)]($style) ";
       };
 
       # Sets up standard crisp command prompt arrows at the end
