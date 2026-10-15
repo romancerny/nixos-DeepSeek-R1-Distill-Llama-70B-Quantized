@@ -12,15 +12,14 @@
       pname = "ioskeley-mono";
       version = "2.1.0";
 
-      # Fetches directly from the Git repository structure natively
       src = pkgs.fetchFromGitHub {
         owner = "ahatem";
         repo = "IoskeleyMono";
         rev = "v2.1.0";
-        hash = "sha256-4c4h09T599j2D5tZ8e1i8n3qA1b2c3d4e5f6g7h8i9o=";
+        # FIXED: Updated with the exact cryptographic hash returned by the Nix daemon
+        hash = "sha256-dQsukssKNXCDWZ3HMzn9SP786BhILBRQeuabFf5JmcE="; 
       };
 
-      # The source contains folders; we look into the Term release distributions directly
       installPhase = ''
         mkdir -p $out/share/fonts/truetype
         find . -name "*.ttf" -exec cp {} $out/share/fonts/truetype/ \;
