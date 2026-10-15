@@ -5,6 +5,30 @@
   home.homeDirectory = "/home/roman";
   home.stateVersion = "24.11"; 
 
+  # --- INSERT THIS BLOCK FOR IOSKELEY MONO ---
+  fonts.fontconfig.enable = true;
+  home.packages = [
+    (pkgs.stdenv.mkDerivation {
+      pname = "ioskeley-mono";
+      version = "2.1.0";
+
+      src = pkgs.fetchurl {
+        url = "https://github.com";
+        hash = "sha256-k/40uFv/0NfA0uFND6XpE616N1x3W/M2+aK/1sX9z8E="; 
+      };
+
+      nativeBuildInputs = [ pkgs.unzip ];
+
+      unpackPhase = "unzip $src";
+
+      installPhase = ''
+        mkdir -p $out/share/fonts/truetype
+        cp *.ttf $out/share/fonts/truetype/
+      '';
+    })
+  ];
+  # --------------------------------------------
+
   programs.home-manager.enable = true;
 
   # 🐚 ZSH SHELL PROFILE CONFIGURATION
@@ -65,6 +89,11 @@
     extraConfig = ''
       local wezterm = require 'wezterm'
       local config = wezterm.config_builder()
+      
+      -- Apply Ioskeley Mono Term
+      config.font = wezterm.font("Ioskeley Mono Term")
+      config.font_size = 13.0
+
       config.enable_wayland = true
       config.front_end = "WebGpu"
       config.hide_tab_bar_if_only_one_tab = true
@@ -310,7 +339,7 @@
   };
 
   # Stylix targets block redirection
-  stylix.targets.wezterm.enable = true;
+  stylix.targets.wezterm.enable = false;
   stylix.targets.sway.enable = true;
   stylix.targets.waybar.enable = true;
 
