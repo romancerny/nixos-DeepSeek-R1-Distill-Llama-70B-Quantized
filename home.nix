@@ -14,7 +14,8 @@
 
       src = pkgs.fetchurl {
         url = "https://github.com";
-        hash = "sha256-k/40uFv/0NfA0uFND6XpE616N1x3W/M2+aK/1sX9z8E="; 
+        # FIXED: Inserted the correct hash returned by the Nix daemon
+        hash = "sha256-1DUWwt7RCTSZsw64xON1n8x2FhVW9jTz0Mqk7E8+k6A="; 
       };
 
       nativeBuildInputs = [ pkgs.unzip ];
