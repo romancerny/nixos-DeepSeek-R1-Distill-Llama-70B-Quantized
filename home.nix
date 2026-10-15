@@ -12,13 +12,13 @@
       pname = "ioskeley-mono";
       version = "2.1.0";
 
-      # fetchzip unpacks the archive smoothly into a directory right away
       src = pkgs.fetchzip {
         url = "https://github.com";
         hash = "sha256-1DUWwt7RCTSZsw64xON1n8x2FhVW9jTz0Mqk7E8+k6A=";
+        # CRITICAL: Forces Nix to recognize this URL download as a zip archive
+        extension = "zip"; 
       };
 
-      # No unpackPhase needed now because fetchzip delivers an unzipped directory
       dontUnpack = true;
 
       installPhase = ''
