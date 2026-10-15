@@ -12,19 +12,18 @@
       pname = "ioskeley-mono";
       version = "2.1.0";
 
-      src = pkgs.fetchurl {
+      # fetchzip unpacks the archive smoothly into a directory right away
+      src = pkgs.fetchzip {
         url = "https://github.com";
-        # FIXED: Inserted the correct hash returned by the Nix daemon
-        hash = "sha256-1DUWwt7RCTSZsw64xON1n8x2FhVW9jTz0Mqk7E8+k6A="; 
+        hash = "sha256-1DUWwt7RCTSZsw64xON1n8x2FhVW9jTz0Mqk7E8+k6A=";
       };
 
-      nativeBuildInputs = [ pkgs.unzip ];
-
-      unpackPhase = "unzip $src";
+      # No unpackPhase needed now because fetchzip delivers an unzipped directory
+      dontUnpack = true;
 
       installPhase = ''
         mkdir -p $out/share/fonts/truetype
-        cp *.ttf $out/share/fonts/truetype/
+        cp $src/*.ttf $out/share/fonts/truetype/
       '';
     })
   ];
@@ -157,8 +156,10 @@
     enable = true;
     package = pkgs.rofi; 
     plugins = [ pkgs.rofi-calc ];
-    terminal = "wezterm";
-    extraConfig = {
+    
+    # NESTED RENAME FIX: Moves config keys under the unified settings node
+    settings = {
+      terminal = "wezterm";
       modi = "drun,run,calc";
       show-icons = true;
       icon-theme = "Papirus";
