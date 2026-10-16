@@ -26,7 +26,21 @@
         {
           home-manager.useGlobalPkgs = true;
           home-manager.useUserPackages = true;
-          home-manager.users.roman = import ./home.nix; # Points to your isolated user profile
+
+          # 👥 DUAL-USER INDEPENDENT HOME-MANAGER ATTACHMENT
+          home-manager.users = {
+            # 1. Roman gets the full desktop environment, shell plugins, AND tmux
+            roman.imports = [ ./home.nix ];
+            
+            # 2. AI-Agent gets a lightweight home container mapping ONLY your shared tmux setup
+            ai-agent = { ... }: {
+              home.username = "ai-agent";
+              home.homeDirectory = "/home/ai-agent";
+              home.stateVersion = "24.11";
+              
+              imports = [ ./tmux.nix ]; # 👈 SHATTERS REPETITION AND SYMLINKS DIRECTLY
+            };
+          };
         }
       ];
     };
