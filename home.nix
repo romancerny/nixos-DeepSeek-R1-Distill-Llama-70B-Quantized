@@ -5,6 +5,10 @@
   home.homeDirectory = "/home/roman";
   home.stateVersion = "24.11"; 
 
+  imports = [
+    ./tmux.nix  # 👈 THIS WIRE-UP LINKS TMUX TO ROMAN'S USER SPACE
+  ];
+
   # --- INSERT THIS BLOCK FOR IOSKELEY MONO ---
   fonts.fontconfig.enable = true;
   home.packages = [
