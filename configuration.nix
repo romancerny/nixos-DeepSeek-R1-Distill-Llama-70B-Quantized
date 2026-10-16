@@ -237,7 +237,7 @@ in
     git vim wget htop curl tmux gnumake python3 python3Packages.pip nodejs                  
     vscode google-chrome gossip discord virt-manager sparrow                    
     gimp beebeep keepassxc tor-browser kdePackages.kate pkgs."aider-chat"
-    wireplumber 
+    wireplumber nmap
   ];
 
   # 🎨 MODULAR THEMING SUBSYSTEM
