@@ -106,11 +106,16 @@
     '';
   };
 
-  # 📊 FORCE BTOP SYSTEM ACCENT TRANSPARENCY 
+  # 📊 ADJUST TELEMETRY GRAPHICS PARAMS FOR HIGH-CONTRAST TRANSPARENCY
   programs.btop = {
     enable = true;
     settings = {
-      theme_background = false; # 👈 THIS SHATTERS THE SOLID BACKGROUND BLOCK
+      theme_background = false; # Keeps terminal transparency active
+      
+      # 🎨 THE FIX FOR TRANSPARENT ROW SCANNABILITY:
+      proc_colors = true;       # Forces colorization rules on PID parameters
+      proc_gradient = false;    # Disables the vertical fading color layer that breaks on transparent backgrounds
+      proc_tree = true;         # Optional: Organizes tasks into trees (making child rows highly distinct)
     };
   };
 
