@@ -238,6 +238,11 @@ in
     vscode google-chrome gossip discord virt-manager sparrow                    
     gimp beebeep keepassxc tor-browser kdePackages.kate pkgs."aider-chat"
     wireplumber nmap
+
+    # 🧠 TELEMETRY & MONITORING EXTENSIONS FOR 70B OVERLAYS
+    btop
+    nvtopPackages.full
+    iotop
   ];
 
   # 🎨 MODULAR THEMING SUBSYSTEM
