@@ -45,4 +45,18 @@
           - shell_command: ll
           - shell_command: ssh roman@hp-elite-001
   '';
+
+  # 📊 NEW: AI ENGINEERING PERFORMANCE MONITORING METRIC MATRIX
+  home.file.".config/tmuxp/perf-monitoring.yaml".text = ''
+    session_name: perf-monitoring
+    windows:
+      - window_name: ai-telemetry
+        layout: main-horizontal
+        options:
+          main-pane-width: 60
+        panes:
+          - shell_command: btop
+          - shell_command: nvtop
+          - shell_command: sudo iotop
+  '';
 }
