@@ -1,4 +1,4 @@
-{ config, pkgs, lib, ... }:
+{ config, pkgs, ... }:
 
 {
   home.username = "roman";
@@ -105,18 +105,6 @@
       return config
     '';
   };
-
-  # 📊 RESTORED: Standard Solid Telemetry Metrics Matrix (Stylix-Managed)
-  programs.btop = {
-    enable = true;
-    settings = {
-      theme_background = true;   # Restores the internal rendering engine
-      proc_gradient = true;      # Enables the native vertical dimming row gradients
-      proc_colors = true;
-      proc_tree = true;
-    };
-  };
-
 
   # 🖥️ NATIVE SWAY COMPOSITOR ENVIRONMENT MANAGEMENT
   wayland.windowManager.sway = {
@@ -362,7 +350,4 @@
 
   stylix.targets.rofi.enable = false;
   stylix.targets.qt.enable = false;
-
-  # 🌟 FIXED: Explicitly tell Stylix to stay away from the btop matrix config
-  stylix.targets.btop.enable = true;
 }
