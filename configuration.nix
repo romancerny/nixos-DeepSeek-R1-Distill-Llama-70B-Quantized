@@ -243,7 +243,25 @@ in
     btop
     nvtopPackages.full
     iotop
+
+    # 🌐 FIXED: Native headless automation engine layers for Aider web scraping
+    playwright-driver       # Supplies the compiled headless browser architecture
+    playwright              # Python ecosystem bindings accessible natively
   ];
+
+  # ⚙️ Force Aider to look at your Nix-managed Playwright binary instead of trying to download one
+  environment.sessionVariables = {
+    PLAYWRIGHT_BROWSERS_PATH = "${pkgs.playwright-driver.browsers}";
+    # (Keep your existing session variables below)
+    NIXOS_OZONE_GFX_ACCELERATION = "1";
+    XDG_SESSION_TYPE = "wayland";
+    XDG_CURRENT_DESKTOP = "sway";
+    MOZ_ENABLE_WAYLAND = "1";
+    WLR_NO_HARDWARE_CURSORS = "1"; 
+    WLR_RENDERER = "vulkan"; 
+    GBM_BACKEND = "nvidia-drm";
+    __GLX_VENDOR_LIBRARY_NAME = "nvidia";
+  };
 
   # 🎨 MODULAR THEMING SUBSYSTEM
   stylix = {
