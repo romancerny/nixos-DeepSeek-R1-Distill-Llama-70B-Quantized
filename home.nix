@@ -110,12 +110,9 @@
   programs.btop = {
     enable = true;
     settings = {
-      theme_background = false; # Keeps terminal transparency active
-      
-      # 🎨 THE FIX FOR TRANSPARENT ROW SCANNABILITY:
-      proc_colors = true;       # Forces colorization rules on PID parameters
-      proc_gradient = false;    # Disables the vertical fading color layer that breaks on transparent backgrounds
-      proc_tree = true;         # Optional: Organizes tasks into trees (making child rows highly distinct)
+      theme_background = true;  # 🌟 RESTORES INTERNAL GRADIENTS AND VISUAL SHADING
+      proc_gradient = true;     # Enables the vertical row dimming mechanics
+      proc_colors = true;       
     };
   };
 
