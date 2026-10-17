@@ -249,16 +249,20 @@ in
     playwright              # Python ecosystem bindings accessible natively
   ];
 
-  # ⚙️ Force Aider to look at your Nix-managed Playwright binary instead of trying to download one
+  # 🖥️ SYSTEM ENVIRONMENT MANAGEMENT & GRAPHICS PATHWAYS
   environment.sessionVariables = {
+    # 🌐 FIXED: Maps Aider's headless browser architecture to the Nix native path
     PLAYWRIGHT_BROWSERS_PATH = "${pkgs.playwright-driver.browsers}";
-    # (Keep your existing session variables below)
+
+    # Existing parameters preserved
     NIXOS_OZONE_GFX_ACCELERATION = "1";
     XDG_SESSION_TYPE = "wayland";
     XDG_CURRENT_DESKTOP = "sway";
     MOZ_ENABLE_WAYLAND = "1";
+    
+    # Standardizes hardware rendering cursor limits across multi-gpu bridges
     WLR_NO_HARDWARE_CURSORS = "1"; 
-    WLR_RENDERER = "vulkan"; 
+    WLR_RENDERER = "vulkan"; # Forces Vulkan instead of conflicting EGL pathways
     GBM_BACKEND = "nvidia-drm";
     __GLX_VENDOR_LIBRARY_NAME = "nvidia";
   };
