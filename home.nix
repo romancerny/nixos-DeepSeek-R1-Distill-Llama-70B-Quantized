@@ -106,11 +106,12 @@
     '';
   };
 
-  # 📊 ADVANCED TELEMETRY METRIC COMPOSITING CONFIG
+  # 📊 ADJUST TELEMETRY METRIC COMPOSITING CONFIG
   programs.btop = {
     enable = true;
     settings = {
-      color_theme = "custom_translucent"; # 👈 TELLS BTOP TO USE OUR TUNED BLENDING PROFILE
+      # 🌟 FIXED: Use mkForce to smash through Stylix's structural constraints
+      color_theme = lib.mkForce "custom_translucent"; 
       theme_background = true;             # COMPULSORY: ENABLES INTERNAL RENDER GRADIENTS
       proc_gradient = true;                # ENABLES THE EXPECTED ROW DIMMING LAYERS
       proc_colors = true;
@@ -120,12 +121,11 @@
 
   # 🎨 DECLARED TRANSLUCENT OVERLAY ENGINE PROFILES
   home.file.".config/btop/themes/custom_translucent.theme".text = ''
-    # Core structural theme definitions mapped cleanly for alpha pipelines
-    theme[main_bg]="#1a1c1d"       # 🌟 THE CRITICAL FIX: Semi-dark canvas allows row gradients to show up
+    theme[main_bg]="#1a1c1d"       # Semi-dark canvas allows row gradients to show up
     theme[main_fg]="#d1c7a3"       # Matches your core Miramare text aesthetics
-    theme[title]="#a89984"          # Accent colors matching your unified layout elements
+    theme[title]="#a89984"         # Accent colors matching your unified layout elements
     theme[hi_fg]="#db4b4b"
-    theme[selected_bg]="#2d3133"    # Process highlights aligned to your window manager configs
+    theme[selected_bg]="#2d3133"   # Process highlights aligned to your window manager configs
     theme[selected_fg]="#d1c7a3"
     theme[inactive_fg]="#706853"   # Subtle tint elements for hidden columns
     theme[proc_misc]="#a89984"
@@ -381,4 +381,7 @@
 
   stylix.targets.rofi.enable = false;
   stylix.targets.qt.enable = false;
+
+  # 🌟 FIXED: Explicitly tell Stylix to stay away from the btop matrix config
+  stylix.targets.btop.enable = false;
 }
