@@ -9,3 +9,7 @@ With ```deepseek-r1:70b``` _researchers_ and ```qwen2.5-coder:32b``` _coders_
 ### 1. System Install
 
 Install a brand new system on a empty disk guide: [NixOS-ai-system-setup-guide.md](docs/NixOS-ai-system-setup-guide.md)
+
+### 2. LLM Model Selection
+
+Reasoning [agentic-ai-setup-research.md](docs/agentic-ai-setup-research.md)
