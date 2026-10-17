@@ -151,14 +151,18 @@ in
   hardware.graphics.enable = true;
   services.xserver.videoDrivers = [ "nvidia" ];
 
+  # 🖥️ UNIFIED SYSTEM ENVIRONMENT VARIABLES
   environment.sessionVariables = {
+    # 🌐 PLAYWRIGHT SCRAPING REDIRECTION FOR AIDER
+    PLAYWRIGHT_BROWSERS_PATH = "${pkgs.playwright-driver.browsers}";
+
+    # GRAPHICS SUB-SYSTEM PATHWAYS
     NIXOS_OZONE_GFX_ACCELERATION = "1";
     XDG_SESSION_TYPE = "wayland";
     XDG_CURRENT_DESKTOP = "sway";
     MOZ_ENABLE_WAYLAND = "1";
-    # 🌟 FIXED: Standardizes hardware rendering cursor limits across multi-gpu bridges
     WLR_NO_HARDWARE_CURSORS = "1"; 
-    WLR_RENDERER = "vulkan"; # Forces Vulkan instead of conflicting EGL pathways
+    WLR_RENDERER = "vulkan";
     GBM_BACKEND = "nvidia-drm";
     __GLX_VENDOR_LIBRARY_NAME = "nvidia";
   };
