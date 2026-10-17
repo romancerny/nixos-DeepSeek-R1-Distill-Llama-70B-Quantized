@@ -106,35 +106,16 @@
     '';
   };
 
-  # 📊 ADJUST TELEMETRY METRIC COMPOSITING CONFIG
+  # 📊 RESTORED: Standard Solid Telemetry Metrics Matrix (Stylix-Managed)
   programs.btop = {
     enable = true;
     settings = {
-      # 🌟 FIXED: Use mkForce to smash through Stylix's structural constraints
-      color_theme = lib.mkForce "custom_translucent"; 
-      theme_background = true;             # COMPULSORY: ENABLES INTERNAL RENDER GRADIENTS
-      proc_gradient = true;                # ENABLES THE EXPECTED ROW DIMMING LAYERS
+      theme_background = true;   # Restores the internal rendering engine
+      proc_gradient = true;      # Enables the native vertical dimming row gradients
       proc_colors = true;
       proc_tree = true;
     };
   };
-
-  # 🎨 DECLARED TRANSLUCENT OVERLAY ENGINE PROFILES
-  home.file.".config/btop/themes/custom_translucent.theme".text = ''
-    theme[main_bg]="#1a1c1d"       # Semi-dark canvas allows row gradients to show up
-    theme[main_fg]="#d1c7a3"       # Matches your core Miramare text aesthetics
-    theme[title]="#a89984"         # Accent colors matching your unified layout elements
-    theme[hi_fg]="#db4b4b"
-    theme[selected_bg]="#2d3133"   # Process highlights aligned to your window manager configs
-    theme[selected_fg]="#d1c7a3"
-    theme[inactive_fg]="#706853"   # Subtle tint elements for hidden columns
-    theme[proc_misc]="#a89984"
-    theme[cpu_box]="#a89984"
-    theme[mem_box]="#a89984"
-    theme[net_box]="#a89984"
-    theme[proc_box]="#a89984"
-    theme[div_line]="#2d3133"      # Clean block divider rules
-  '';
 
 
   # 🖥️ NATIVE SWAY COMPOSITOR ENVIRONMENT MANAGEMENT
@@ -383,5 +364,5 @@
   stylix.targets.qt.enable = false;
 
   # 🌟 FIXED: Explicitly tell Stylix to stay away from the btop matrix config
-  stylix.targets.btop.enable = false;
+  stylix.targets.btop.enable = true;
 }
