@@ -106,6 +106,14 @@
     '';
   };
 
+  # 📊 FORCE BTOP SYSTEM ACCENT TRANSPARENCY 
+  programs.btop = {
+    enable = true;
+    settings = {
+      theme_background = false; # 👈 THIS SHATTERS THE SOLID BACKGROUND BLOCK
+    };
+  };
+
   # 🖥️ NATIVE SWAY COMPOSITOR ENVIRONMENT MANAGEMENT
   wayland.windowManager.sway = {
     enable = true;
