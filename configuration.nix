@@ -103,6 +103,7 @@ in
   networking.hostName = "beast-kf";
   networking.networkmanager.enable = true;
   networking.nameservers = [ "1.1.1.1" "9.9.9.9" ];
+  networking.networkmanager.enable = true;
 
   time.timeZone = "Europe/London";
   i18n.defaultLocale = "en_GB.UTF-8";
