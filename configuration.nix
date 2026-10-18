@@ -252,6 +252,9 @@ in
     # Headless Automation Engines for Aider /web scraping
     playwright-driver
     playwright
+
+    # File managers
+    mc superfile yazi
   ];
 
   # 🎨 MODULAR THEMING SUBSYSTEM
