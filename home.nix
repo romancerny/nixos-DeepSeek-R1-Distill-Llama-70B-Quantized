@@ -153,6 +153,9 @@
         "${modifier}+Shift+e" = "exec swaymsg exit";
 
         "${modifier}+Shift+m" = "exec wezterm start --title 'wiremix-floating' -e wiremix";
+
+        # 🖱️ ADDED: Press Super + Middle Mouse Button anywhere on the screen to spawn the mixer
+        "${modifier}+button2" = "exec wezterm start --title 'wiremix-floating' -e wiremix";
       };
     };
     
