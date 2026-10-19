@@ -308,16 +308,17 @@
         };
         "backlight" = { format = "{percent}% 🌓"; };
 
+        # 🔊 UPDATED: Wrapped command mapping inside a raw string format parameter
         "pulseaudio" = { 
           format = "{volume}% 🎧"; 
           format-muted = "🔇"; 
-          "on-click" = "wezterm start --title 'wiremix-floating' -e wiremix"; 
+          on-click = "wezterm start --title wiremix-floating -e wiremix"; 
         };
         "pulseaudio#microphone" = {
           format = "{volume}% 🎙️";
           format-source-muted = "🎙️ MUTED";
           source = "default-audio-source";
-          "on-click" = "wezterm start --title 'wiremix-floating' -e wiremix";
+          on-click = "wezterm start --title wiremix-floating -e wiremix";
         };
 
         "cpu" = { format = "{usage}% ⚙️"; tooltip = true; };
