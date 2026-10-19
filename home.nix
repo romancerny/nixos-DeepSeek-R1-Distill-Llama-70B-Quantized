@@ -118,10 +118,11 @@
       ];
       bars = [];
       
+      # 🔳 UPDATED: Use native app_id matching for WezTerm under Wayland
       window.commands = [
         {
           command = "floating enable, resize set width 750 px height 450 px, move position center";
-          criteria = { title = "wiremix-floating"; };
+          criteria = { app_id = "wiremix-floating"; };
         }
       ];
 
@@ -152,7 +153,9 @@
         "${modifier}+d" = "exec rofi -show drun";
         "${modifier}+Shift+e" = "exec swaymsg exit";
 
-        "${modifier}+Shift+m" = "exec wezterm start --title 'wiremix-floating' -e wiremix";
+        # ⌨️ UPDATED: Corrected WezTerm launcher flag
+        "${modifier}+Shift+m" = "exec wezterm start --class wiremix-floating -- wiremix";
+
 
         # 🖱️ ADDED: Press Super + Middle Mouse Button anywhere on the screen to spawn the mixer
         "${modifier}+button2" = "exec wezterm start --title 'wiremix-floating' -e wiremix";
@@ -311,17 +314,17 @@
         };
         "backlight" = { format = "{percent}% 🌓"; };
 
-        # 🔊 UPDATED: Wrapped command mapping inside a raw string format parameter
+        # 🔊 UPDATED: Swapped title arguments out for functional Wayland classes
         "pulseaudio" = { 
           format = "{volume}% 🎧"; 
           format-muted = "🔇"; 
-          on-click = "wezterm start --title wiremix-floating -e wiremix"; 
+          on-click = "wezterm start --class wiremix-floating -- wiremix"; 
         };
         "pulseaudio#microphone" = {
           format = "{volume}% 🎙️";
           format-source-muted = "🎙️ MUTED";
           source = "default-audio-source";
-          on-click = "wezterm start --title wiremix-floating -e wiremix";
+          on-click = "wezterm start --class wiremix-floating -- wiremix";
         };
 
         "cpu" = { format = "{usage}% ⚙️"; tooltip = true; };
