@@ -12,6 +12,7 @@
   # --- INSERT THIS BLOCK FOR IOSKELEY MONO ---
   fonts.fontconfig.enable = true;
   home.packages = [
+    pkgs.wiremix
     (pkgs.stdenv.mkDerivation {
       pname = "ioskeley-mono";
       version = "2.1.0";
@@ -117,6 +118,13 @@
       ];
       bars = [];
       
+      window.commands = [
+        {
+          command = "floating enable, resize set width 750 px height 450 px, move position center";
+          criteria = { title = "wiremix-floating"; };
+        }
+      ];
+
       output = {
         "HDMI-A-1" = {
           res = "3840x2160";
@@ -143,6 +151,8 @@
         
         "${modifier}+d" = "exec rofi -show drun";
         "${modifier}+Shift+e" = "exec swaymsg exit";
+
+        "${modifier}+Shift+m" = "exec wezterm start --title 'wiremix-floating' -e wiremix";
       };
     };
     
@@ -297,12 +307,19 @@
           format-plugged = "{capacity}% 🔌";
         };
         "backlight" = { format = "{percent}% 🌓"; };
-        "pulseaudio" = { format = "{volume}% 🎧"; format-muted = "🔇"; };
+
+        "pulseaudio" = { 
+          format = "{volume}% 🎧"; 
+          format-muted = "🔇"; 
+          "on-click" = "wezterm start --title 'wiremix-floating' -e wiremix"; 
+        };
         "pulseaudio#microphone" = {
           format = "{volume}% 🎙️";
           format-source-muted = "🎙️ MUTED";
           source = "default-audio-source";
+          "on-click" = "wezterm start --title 'wiremix-floating' -e wiremix";
         };
+
         "cpu" = { format = "{usage}% ⚙️"; tooltip = true; };
         "memory" = { format = "{percentage}% ☰"; tooltip = true; };
 
