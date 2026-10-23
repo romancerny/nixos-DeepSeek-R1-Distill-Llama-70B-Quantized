@@ -116,6 +116,16 @@
     };
   };
 
+  wayland.windowManager.sway = {
+    enable = true;
+    config = {
+      keybindings = lib.mkOptionDefault {
+        "Print" = "exec grim - | wl-copy";
+        "Mod4+Shift+s" = "exec grim -g \"$(slurp)\" - | wl-copy";
+      };
+    };
+  };
+
   # Stylix targets block
   stylix.targets.wezterm.enable = true;
 
