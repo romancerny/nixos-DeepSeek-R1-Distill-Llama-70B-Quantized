@@ -2,21 +2,28 @@
 
 A fully local, autonomous, multi-agent project system built around one hard
 hardware constraint: **only one large model can be resident in GPU memory at a
-time.** DeepSeek-R1 70B plans, researches, reviews, and reflects;
-Qwen2.5-Coder 32B implements and tests. Because the two models can never run
-simultaneously, all collaboration happens through a durable, auditable
-file-storage protocol, and the orchestrator explicitly unloads one model and
-loads the other — back and forth, as many times as the project requires.
+time.** The default research model is the uncensored
+`DeepSeek-R1-Distill-Llama-70B-Uncensored-v2-Unbiased-Reasoner.Q5_K_M.gguf`,
+served by a llama.cpp `llama-server` subprocess that the orchestrator spawns
+and stops on demand (`-ngl 23 -c 16384 -ctk q8_0 -ctv q8_0`); it plans,
+researches, reviews, and reflects. Qwen2.5-Coder 32B, served by Ollama,
+implements and tests. The Ollama-served `deepseek-r1:70b` remains available
+for any role via the config. Because the models can never run simultaneously,
+all collaboration happens through a durable, auditable file-storage protocol,
+and the orchestrator explicitly unloads one model and loads the other — back
+and forth, as many times as the project requires.
 
 The architecture applies the workflow patterns taught in DeepLearning.AI's
 *Agentic AI* course (see [Course mapping](#course-mapping) and its caveat).
 
 ## Properties
 
-- **One resident model, verified.** Every inference passes through a residency
-  manager that inspects `/api/ps`, explicitly unloads non-target models with
-  `keep_alive: 0`, preloads the target, and verifies that exactly one model is
-  resident before any agent runs. It never relies on implicit Ollama eviction.
+- **One resident model, verified, across both backends.** Every inference
+  passes through a residency manager that inspects the combined residency
+  state (Ollama `/api/ps` plus the managed llama-server process), explicitly
+  unloads non-target models, preloads the target, and verifies that exactly
+  one model is resident before any agent runs. It never relies on implicit
+  eviction.
 - **Logically concurrent agents on a shared model.** Multiple researchers can
   share the DeepSeek wave, and multiple coders plus QA can share the Qwen
   wave. They advance round-robin within the wave; inference itself is serial,
@@ -43,9 +50,18 @@ The architecture applies the workflow patterns taught in DeepLearning.AI's
 
 - Python 3.11+ (standard library only — no pip dependencies), or the Nix
   package (`nix build` — see [Nix / multiple projects](#nix--multiple-projects)).
-- [Ollama](https://ollama.com) serving `deepseek-r1:70b` and
-  `qwen2.5-coder:32b` (or edit `roles` in the config for other models). On
-  NixOS this is typically the `services.ollama` system service.
+- [Ollama](https://ollama.com) serving `qwen2.5-coder:32b` (and optionally
+  `deepseek-r1:70b`, which stays available for any role). On NixOS this is
+  typically the `services.ollama` system service.
+- [llama.cpp](https://github.com/ggml-org/llama.cpp) (`llama-server`) and the
+  GGUF at `~/models/DeepSeek-R1-Distill-Llama-70B-Uncensored-v2-Unbiased-Reasoner.Q5_K_M.gguf`
+  (relative to the user running the tool — the `ai-agent` user on this NixOS
+  host). The orchestrator launches the server itself with the configured
+  flags; nothing needs to be pre-started. The model can also be exercised
+  directly with
+  `llama-cli -m ~/models/DeepSeek-R1-Distill-Llama-70B-Uncensored-v2-Unbiased-Reasoner.Q5_K_M.gguf -ngl 23 -c 16384 -ctk q8_0 -ctv q8_0`.
+- Roles can point at any Ollama model by editing `roles` in the config; the
+  llama.cpp GGUF is referenced by the alias configured as `llamacpp.model_name`.
 - Hardware where one such model fits comfortably and two do not — the entire
   design exists for exactly that situation.
 
@@ -73,8 +89,8 @@ in [docs/nixos-projects.md](docs/nixos-projects.md).
 cd agentic-ai
 cp config.example.json config.json   # adjust models/commands if needed
 
-# 1. Preflight: config, state dir, Ollama connectivity, model availability.
-#    Does NOT load any large model.
+# 1. Preflight: config, state dir, Ollama connectivity, llama.cpp binary and
+#    GGUF file, model availability. Does NOT load any large model.
 PYTHONPATH=src python3 -m agentic_ai doctor --config config.json
 
 # 2. Inspect the generated plan before any code is written.
@@ -96,7 +112,7 @@ instead of `PYTHONPATH=src python3 -m agentic_ai …`.
 
 | Command | Purpose |
 | --- | --- |
-| `doctor --config C [--json]` | Validate config, state dir, Ollama API, required models, command executables. Never loads a large model. |
+| `doctor --config C [--json]` | Validate config, state dir, Ollama API, llama.cpp binary + GGUF file, required models, command executables. Never loads a large model. |
 | `run --config C (--goal G \| --goal-file F) [--run-id ID] [--stop-after-plan]` | Bootstrap a plan and execute the full autonomous workflow. |
 | `resume RUN_ID --config C` | Continue a paused, interrupted, or crashed run without repeating completed work. |
 | `status RUN_ID [--json]` | Print the canonical run snapshot. |
@@ -116,9 +132,11 @@ All commands take `--state-dir` (default `.agentic-ai`).
    Newly unblocked same-model tasks join the active wave; nothing switches
    mid-step.
 3. **Switch (unload → verify → load → verify).** When the resident model's
-   ready set is drained, the orchestrator explicitly unloads it, verifies
-   `/api/ps` is empty, loads the next model, verifies exclusivity, and writes
-   a switch record (from/to, before/after `/api/ps` snapshots, assignments).
+   ready set is drained, the orchestrator explicitly unloads it (Ollama
+   `keep_alive: 0`, or stopping the llama-server process), verifies residency
+   is empty, loads the next model (preloading via Ollama, or spawning
+   `llama-server` and waiting for `/health`), verifies exclusivity, and writes
+   a switch record (from/to, before/after residency snapshots, assignments).
    This repeats as often as the DAG requires.
 4. **Evaluate (no model).** At quiescent barriers, deterministic acceptance
    checks run: required files must exist and configured commands (unit tests,

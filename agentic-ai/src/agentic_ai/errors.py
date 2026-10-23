@@ -26,6 +26,14 @@ class OllamaError(AgenticError):
     pass
 
 
+class LlamaCppError(OllamaError):
+    """Inference-backend failure from the llama.cpp server.
+
+    Subclasses OllamaError so operational-error handling treats both
+    inference backends uniformly.
+    """
+
+
 class ToolError(AgenticError):
     pass
 

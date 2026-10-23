@@ -70,7 +70,10 @@ class PlanTests(unittest.TestCase):
 
     def test_valid_plan_resolves_models_and_ranks(self):
         plan = Plan.from_dict(plan_dict(), self.config)
-        self.assertEqual(plan.required_models, ["deepseek-r1:70b", "qwen2.5-coder:32b"])
+        self.assertEqual(
+            plan.required_models,
+            ["deepseek-r1-uncensored-v2:70b", "qwen2.5-coder:32b"],
+        )
         self.assertEqual(plan.ranks["research-api"], 0)
         self.assertEqual(plan.ranks["implement"], 2)
         self.assertEqual(plan.task("tests").model, "qwen2.5-coder:32b")

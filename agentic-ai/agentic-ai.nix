@@ -7,7 +7,10 @@
 #
 # Ollama is intentionally NOT part of this package. On NixOS it is expected to
 # be provided by the system configuration (services.ollama); the tool only
-# talks to its HTTP API. See docs/nixos-projects.md.
+# talks to its HTTP API. The same applies to llama.cpp: `llama-server` is
+# expected on PATH (e.g. pkgs.llama-cpp with cudaSupport) for the GGUF-backed
+# model, and the GGUF file itself lives in the executing user's ~/models.
+# See docs/nixos-projects.md.
 { lib
 , python3Packages
 }:

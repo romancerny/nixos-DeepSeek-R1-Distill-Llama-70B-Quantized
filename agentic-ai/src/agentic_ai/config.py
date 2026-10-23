@@ -52,6 +52,38 @@ class OllamaConfig:
     transport_retries: int = 2
 
 
+# Default alias for the llama.cpp-served GGUF research model. Roles reference
+# this name; Config.backend_for_model routes it to the llama.cpp backend.
+LLAMACPP_DEFAULT_MODEL = "deepseek-r1-uncensored-v2:70b"
+LLAMACPP_DEFAULT_MODEL_PATH = (
+    "~/models/DeepSeek-R1-Distill-Llama-70B-Uncensored-v2-Unbiased-Reasoner.Q5_K_M.gguf"
+)
+
+
+@dataclass(frozen=True)
+class LlamaCppConfig:
+    """A single GGUF model served by a llama.cpp `llama-server` subprocess.
+
+    The orchestrator spawns/stops the server itself so the one-resident-model
+    invariant holds across both inference backends.
+    """
+
+    enabled: bool = True
+    model_name: str = LLAMACPP_DEFAULT_MODEL
+    model_path: str = LLAMACPP_DEFAULT_MODEL_PATH
+    server_binary: str = "llama-server"
+    host: str = "127.0.0.1"
+    port: int = 8085
+    gpu_layers: int = 23
+    context_length: int = 16384
+    cache_type_k: str = "q8_0"
+    cache_type_v: str = "q8_0"
+    extra_args: tuple[str, ...] = ()
+    startup_timeout_seconds: int = 1800
+    request_timeout_seconds: int = 3600
+    transport_retries: int = 2
+
+
 @dataclass(frozen=True)
 class WebConfig:
     enabled: bool = False
@@ -76,7 +108,7 @@ class Limits:
 
 
 def _default_roles() -> dict[str, RoleConfig]:
-    research = "deepseek-r1:70b"
+    research = LLAMACPP_DEFAULT_MODEL
     coding = "qwen2.5-coder:32b"
     return {
         "planner": RoleConfig(research, num_predict=6144, temperature=0.1),
@@ -104,6 +136,7 @@ class Config:
     roles: dict[str, RoleConfig] = field(default_factory=_default_roles)
     commands: dict[str, CommandConfig] = field(default_factory=_default_commands)
     ollama: OllamaConfig = field(default_factory=OllamaConfig)
+    llamacpp: LlamaCppConfig = field(default_factory=LlamaCppConfig)
     web: WebConfig = field(default_factory=WebConfig)
     limits: Limits = field(default_factory=Limits)
 
@@ -115,7 +148,7 @@ class Config:
     def from_dict(cls, data: dict[str, Any]) -> "Config":
         if not isinstance(data, dict):
             raise ConfigurationError("Configuration root must be a JSON object")
-        unknown = set(data) - {"roles", "commands", "ollama", "web", "limits"}
+        unknown = set(data) - {"roles", "commands", "ollama", "llamacpp", "web", "limits"}
         if unknown:
             raise ConfigurationError(f"Unknown configuration keys: {sorted(unknown)}")
 
@@ -162,9 +195,15 @@ class Config:
             )
 
         ollama_raw = data.get("ollama", {})
+        llamacpp_raw = data.get("llamacpp", {})
         web_raw = data.get("web", {})
         limits_raw = data.get("limits", {})
-        for label, raw in (("ollama", ollama_raw), ("web", web_raw), ("limits", limits_raw)):
+        for label, raw in (
+            ("ollama", ollama_raw),
+            ("llamacpp", llamacpp_raw),
+            ("web", web_raw),
+            ("limits", limits_raw),
+        ):
             if not isinstance(raw, dict):
                 raise ConfigurationError(f"{label} must be an object")
         try:
@@ -173,6 +212,14 @@ class Config:
                 raise ConfigurationError("Unknown Ollama settings")
             ollama_defaults.update(ollama_raw)
             ollama = OllamaConfig(**ollama_defaults)
+
+            llamacpp_defaults = asdict(LlamaCppConfig())
+            if set(llamacpp_raw) - set(llamacpp_defaults):
+                raise ConfigurationError("Unknown llama.cpp settings")
+            llamacpp_defaults.update(llamacpp_raw)
+            if "extra_args" in llamacpp_defaults:
+                llamacpp_defaults["extra_args"] = tuple(llamacpp_defaults["extra_args"])
+            llamacpp = LlamaCppConfig(**llamacpp_defaults)
 
             web_defaults = asdict(WebConfig())
             if set(web_raw) - set(web_defaults):
@@ -190,7 +237,7 @@ class Config:
         except TypeError as exc:
             raise ConfigurationError(str(exc)) from exc
 
-        config = cls(roles, commands, ollama, web, limits)
+        config = cls(roles, commands, ollama, llamacpp, web, limits)
         config.validate()
         return config
 
@@ -205,7 +252,12 @@ class Config:
                 raise ConfigurationError(f"Role {name} limits must be positive")
             if not 0 <= role.temperature <= 2:
                 raise ConfigurationError(f"Role {name} temperature must be between 0 and 2")
-            if role.num_predict + self.limits.safety_reserve_tokens >= self.ollama.context_length:
+            context_length = (
+                self.llamacpp.context_length
+                if self.backend_for_model(role.model) == "llamacpp"
+                else self.ollama.context_length
+            )
+            if role.num_predict + self.limits.safety_reserve_tokens >= context_length:
                 raise ConfigurationError(f"Role {name} leaves no input context")
         if not self.ollama.base_url.startswith(("http://", "https://")):
             raise ConfigurationError("Ollama base_url must be HTTP(S)")
@@ -218,6 +270,37 @@ class Config:
                 raise ConfigurationError("Ollama timeouts and context must be positive")
         if self.ollama.transport_retries < 0:
             raise ConfigurationError("transport_retries cannot be negative")
+        llamacpp = self.llamacpp
+        if llamacpp.enabled:
+            if not llamacpp.model_name or any(ch.isspace() for ch in llamacpp.model_name):
+                raise ConfigurationError("Invalid llamacpp.model_name")
+            if not llamacpp.model_path:
+                raise ConfigurationError("llamacpp.model_path cannot be empty")
+            if not llamacpp.server_binary:
+                raise ConfigurationError("llamacpp.server_binary cannot be empty")
+            if not 0 < llamacpp.port < 65536:
+                raise ConfigurationError("llamacpp.port must be a valid TCP port")
+            for value in (
+                llamacpp.context_length,
+                llamacpp.startup_timeout_seconds,
+                llamacpp.request_timeout_seconds,
+            ):
+                if value <= 0:
+                    raise ConfigurationError(
+                        "llama.cpp timeouts and context must be positive"
+                    )
+            if llamacpp.transport_retries < 0:
+                raise ConfigurationError("llamacpp.transport_retries cannot be negative")
+            if llamacpp.gpu_layers < 0:
+                raise ConfigurationError("llamacpp.gpu_layers cannot be negative")
+            if any(not isinstance(arg, str) or not arg for arg in llamacpp.extra_args):
+                raise ConfigurationError("llamacpp.extra_args must be non-empty strings")
+        else:
+            for name in ROLE_NAMES:
+                if self.roles[name].model == llamacpp.model_name:
+                    raise ConfigurationError(
+                        f"Role {name} uses {llamacpp.model_name} but llamacpp is disabled"
+                    )
         for name, command in self.commands.items():
             if command.timeout_seconds <= 0:
                 raise ConfigurationError(f"Command {name} timeout must be positive")
@@ -232,6 +315,17 @@ class Config:
             raise ConfigurationError("Web result and byte limits must be positive")
         if "{query}" not in self.web.search_url:
             raise ConfigurationError("web.search_url must contain {query}")
+
+    def backend_for_model(self, model: str) -> str:
+        """Return the inference backend that serves a model: ollama or llamacpp."""
+        if self.llamacpp.enabled and model == self.llamacpp.model_name:
+            return "llamacpp"
+        return "ollama"
+
+    def context_length_for_model(self, model: str) -> int:
+        if self.backend_for_model(model) == "llamacpp":
+            return self.llamacpp.context_length
+        return self.ollama.context_length
 
     def model_for_role(self, role: str) -> str:
         try:

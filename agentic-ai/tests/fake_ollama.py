@@ -5,8 +5,34 @@ import threading
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from typing import Any, Callable
 
+from agentic_ai.config import Config, LlamaCppConfig, OllamaConfig, RoleConfig
+
 
 Responder = Callable[[str, list[dict[str, str]]], Any]
+
+
+def ollama_only_config(ollama: OllamaConfig) -> Config:
+    """Config whose roles all resolve to Ollama models served by the fake.
+
+    The production defaults route research roles to the llama.cpp backend;
+    tests that run against FakeOllamaServer pin every role to Ollama models.
+    """
+    research = "deepseek-r1:70b"
+    coding = "qwen2.5-coder:32b"
+    roles = {
+        "planner": RoleConfig(research, num_predict=6144, temperature=0.1),
+        "researcher": RoleConfig(research, num_predict=6144, temperature=0.2),
+        "architect": RoleConfig(research, num_predict=6144, temperature=0.1),
+        "coder": RoleConfig(coding, num_predict=4096, temperature=0.1),
+        "qa": RoleConfig(coding, num_predict=4096, temperature=0.1),
+        "reviewer": RoleConfig(research, num_predict=4096, temperature=0.0),
+        "reflector": RoleConfig(research, num_predict=6144, temperature=0.1),
+    }
+    return Config(
+        roles=roles,
+        ollama=ollama,
+        llamacpp=LlamaCppConfig(enabled=False),
+    )
 
 
 class FakeOllamaServer:

@@ -6,9 +6,9 @@ import unittest
 from pathlib import Path
 
 from agentic_ai.cli import main
-from agentic_ai.config import Config, OllamaConfig
+from agentic_ai.config import OllamaConfig
 from agentic_ai.storage import RunStore
-from fake_ollama import FakeOllamaServer
+from fake_ollama import FakeOllamaServer, ollama_only_config
 from test_end_to_end import WorkflowResponder
 
 
@@ -17,8 +17,8 @@ class CliTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temporary:
             responder = WorkflowResponder()
             with FakeOllamaServer(responder) as fake:
-                config = Config(
-                    ollama=OllamaConfig(
+                config = ollama_only_config(
+                    OllamaConfig(
                         base_url=fake.url,
                         load_timeout_seconds=2,
                         request_timeout_seconds=3,

@@ -7,7 +7,7 @@ from agentic_ai.config import Config, OllamaConfig
 from agentic_ai.ollama import OllamaClient
 from agentic_ai.runner import ProjectRunner
 from agentic_ai.storage import RunStore, read_json
-from fake_ollama import FakeOllamaServer
+from fake_ollama import FakeOllamaServer, ollama_only_config
 
 
 PLAN = {
@@ -204,7 +204,7 @@ class EndToEndTests(unittest.TestCase):
                     offload_on_exit=True,
                     transport_retries=0,
                 )
-                config = Config(ollama=ollama)
+                config = ollama_only_config(ollama)
                 store = RunStore.create(
                     temporary,
                     "Build a correct calculator with independent tests",

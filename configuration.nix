@@ -187,13 +187,29 @@ in
   # 🐋 OLLAMA HARDWARE INFERENCE LAYER
   services.ollama = {
     enable = true;
-    package = pkgs.ollama-cuda; 
+    package = pkgs.ollama-cuda;
     environmentVariables = {
-      OLLAMA_FLASH_ATTENTION = "1";   
-      OLLAMA_NUM_PARALLEL = "1";      
-      OLLAMA_CONTEXT_LENGTH = "16384"; 
+      OLLAMA_FLASH_ATTENTION = "1";
+      OLLAMA_NUM_PARALLEL = "1";
+      OLLAMA_CONTEXT_LENGTH = "16384";
     };
   };
+
+  # 🦙 LLAMA.CPP INFERENCE LAYER (GGUF research model for agentic-ai)
+  #
+  # Serves DeepSeek-R1-Distill-Llama-70B-Uncensored-v2-Unbiased-Reasoner.Q5_K_M.gguf
+  # via a llama-server subprocess that agentic-ai spawns on demand with:
+  #   -ngl 23 -c 16384 -ctk q8_0 -ctv q8_0 --jinja
+  # (equivalent interactive form:
+  #   llama-cli -m ~/models/DeepSeek-R1-Distill-Llama-70B-Uncensored-v2-Unbiased-Reasoner.Q5_K_M.gguf \
+  #     -ngl 23 -c 16384 -ctk q8_0 -ctv q8_0)
+  # Only usable via the ai-agent user: the GGUF lives in that user's home.
+  # Nix cannot fetch the ~50GB GGUF declaratively; place it manually once:
+  #   sudo -u ai-agent mkdir -p /home/ai-agent/models   # created by tmpfiles below
+  #   sudo -u ai-agent wget -O /home/ai-agent/models/DeepSeek-R1-Distill-Llama-70B-Uncensored-v2-Unbiased-Reasoner.Q5_K_M.gguf <model-url>
+  systemd.tmpfiles.rules = [
+    "d /home/ai-agent/models 0750 ai-agent ai-sandbox - -"
+  ];
 
   virtualisation.libvirtd.enable = true;
   programs.virt-manager.enable = true;
@@ -248,6 +264,10 @@ in
     btop
     nvtopPackages.full
     iotop
+
+    # llama.cpp (CUDA) — provides llama-cli / llama-server for the GGUF
+    # research model used by agentic-ai under the ai-agent user.
+    (llama-cpp.override { cudaSupport = true; })
 
     # Headless Automation Engines for Aider /web scraping
     playwright-driver

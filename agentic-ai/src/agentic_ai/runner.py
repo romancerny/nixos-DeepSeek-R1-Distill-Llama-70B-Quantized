@@ -5,6 +5,7 @@ import traceback
 from typing import Any
 
 from .agent import AgentRuntime
+from .backends import ModelBackends
 from .config import Config
 from .context import compact_json
 from .errors import (
@@ -30,12 +31,18 @@ class ProjectRunner:
         store: RunStore,
         config: Config,
         *,
-        client: OllamaClient | None = None,
+        client: OllamaClient | ModelBackends | None = None,
         poll_interval: float = 0.2,
     ):
         self.store = store
         self.config = config
-        self.client = client or OllamaClient(config.ollama)
+        if client is None:
+            self.client = ModelBackends(config)
+        elif isinstance(client, ModelBackends):
+            self.client = client
+        else:
+            # A bare OllamaClient (used by tests) serves the Ollama models.
+            self.client = ModelBackends(config, ollama_client=client)
         self.residency = ResidencyManager(
             self.client, store, config, poll_interval=poll_interval
         )

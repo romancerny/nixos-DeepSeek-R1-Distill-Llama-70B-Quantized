@@ -8,9 +8,9 @@ import tempfile
 import time
 from pathlib import Path
 
+from .backends import ModelBackends
 from .config import Config, load_config
 from .errors import AgenticError, ConfigurationError, StorageError
-from .ollama import OllamaClient
 from .reporting import generate_report
 from .runner import ProjectRunner
 from .storage import FileLock, RunStore, read_json
@@ -30,10 +30,10 @@ def _doctor(config: Config, state_dir: str) -> tuple[bool, dict]:
         checks.append({"name": "state_directory", "ok": True, "path": str(state)})
     except OSError as exc:
         checks.append({"name": "state_directory", "ok": False, "error": str(exc)})
-    client = OllamaClient(config.ollama)
+    backends = ModelBackends(config)
     available = set()
     try:
-        tags = client.tags()
+        tags = backends.ollama.tags()
         for model in tags.get("models", []):
             if isinstance(model, dict):
                 available.add(model.get("name") or model.get("model"))
@@ -41,6 +41,28 @@ def _doctor(config: Config, state_dir: str) -> tuple[bool, dict]:
         checks.append({"name": "ollama_api", "ok": True, "models": sorted(available)})
     except AgenticError as exc:
         checks.append({"name": "ollama_api", "ok": False, "error": str(exc)})
+    if config.llamacpp.enabled:
+        binary = config.llamacpp.server_binary
+        binary_found = (
+            Path(binary).is_file() if Path(binary).is_absolute() else shutil.which(binary)
+        )
+        checks.append(
+            {
+                "name": "llamacpp_binary",
+                "ok": binary_found is not None and binary_found is not False,
+                "executable": binary,
+            }
+        )
+        model_path = backends.llamacpp.resolved_model_path()
+        checks.append(
+            {
+                "name": "llamacpp_model_file",
+                "ok": model_path.is_file(),
+                "path": str(model_path),
+            }
+        )
+        if model_path.is_file():
+            available.add(config.llamacpp.model_name)
     required = sorted({role.model for role in config.roles.values()})
     missing = sorted(set(required) - available)
     checks.append(
@@ -75,7 +97,7 @@ def _print_run_result(store: RunStore) -> None:
 
 def _offload(config: Config, state_dir: str) -> int:
     lock_path = Path(state_dir).expanduser().resolve() / "executor.lock"
-    client = OllamaClient(config.ollama)
+    client = ModelBackends(config)
     owned = {role.model for role in config.roles.values()}
     with FileLock(lock_path):
         names = client.model_names()

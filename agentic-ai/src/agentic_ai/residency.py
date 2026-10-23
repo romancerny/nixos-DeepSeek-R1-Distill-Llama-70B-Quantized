@@ -3,9 +3,10 @@ from __future__ import annotations
 import time
 from typing import Any, Callable
 
+from .backends import ModelBackends
 from .config import Config
 from .errors import ResidencyError
-from .ollama import GenerationResult, OllamaClient
+from .ollama import GenerationResult
 from .storage import RunStore, atomic_write_json, utc_now
 
 
@@ -14,7 +15,7 @@ class ResidencyManager:
 
     def __init__(
         self,
-        client: OllamaClient,
+        client: ModelBackends,
         store: RunStore,
         config: Config,
         *,

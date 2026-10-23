@@ -2,7 +2,9 @@
 
 Running `agentic-ai` against real 70B/32B models on a single-GPU host.
 
-## 1. Ollama service expectations
+## 1. Inference backend expectations
+
+### Ollama
 
 The orchestrator assumes an Ollama it can treat as (nearly) exclusive:
 
@@ -10,8 +12,10 @@ The orchestrator assumes an Ollama it can treat as (nearly) exclusive:
   itself, but the server must not accept parallel requests from elsewhere.
 - `OLLAMA_CONTEXT_LENGTH=16384` — matches `ollama.context_length` in the
   config; context compaction is tuned against this budget.
-- The two required models pulled in advance:
-  `ollama pull deepseek-r1:70b` and `ollama pull qwen2.5-coder:32b`.
+- The Ollama models pulled in advance:
+  `ollama pull qwen2.5-coder:32b` (and `ollama pull deepseek-r1:70b` if you
+  assign it to any role — it remains available, though the defaults now use
+  the llama.cpp GGUF for research roles).
 - `dedicated_ollama: true` (default) means the residency manager may unload
   any resident model. Set it to `false` on a shared Ollama: the manager will
   then **refuse to run** while unknown external models are resident instead
@@ -23,6 +27,28 @@ defaults (`load_timeout_seconds: 1800`, `request_timeout_seconds: 3600`,
 across the short gaps between an agent's turns; explicit unload at switch
 barriers uses `keep_alive: 0` and is always verified against `/api/ps`.
 
+### llama.cpp (GGUF research model)
+
+The default research model is served by a `llama-server` subprocess that the
+orchestrator spawns and stops itself — do not run a standalone llama-server
+for this model. Loading the model runs the equivalent of:
+
+```bash
+llama-server -m ~/models/DeepSeek-R1-Distill-Llama-70B-Uncensored-v2-Unbiased-Reasoner.Q5_K_M.gguf \
+  -ngl 23 -c 16384 -ctk q8_0 -ctv q8_0 --jinja --host 127.0.0.1 --port 8085
+```
+
+(the interactive equivalent for manual checks uses `llama-cli` with the same
+`-ngl 23 -c 16384 -ctk q8_0 -ctv q8_0` flags). `~` resolves against the user
+running the tool — on this NixOS host that is the `ai-agent` account, so the
+file is `/home/ai-agent/models/…`. Chat goes through the server's
+OpenAI-compatible `/v1/chat/completions` endpoint; startup health is polled
+on `/health` up to `llamacpp.startup_timeout_seconds`; the server log is
+written to `~/.cache/agentic-ai/llama-server.log`. Residency of this backend
+is the process state: unload terminates the server. All `llamacpp.*` settings
+(model path, alias, port, GPU layers, KV cache types, extra args) live in the
+config's `llamacpp` object.
+
 ## 2. Preflight
 
 ```bash
@@ -30,8 +56,10 @@ agentic-ai doctor --config config.json --json
 ```
 
 Checks, without loading any large model: config validity, state-dir
-writability, `/api/tags` connectivity, presence of both required models, and
-that every configured command's executable resolves. Fix whatever it reports
+writability, `/api/tags` connectivity, presence of the required Ollama
+models, that the llama.cpp server binary resolves and the GGUF file exists
+(when `llamacpp.enabled`), and that every configured command's executable
+resolves. Fix whatever it reports
 before starting a run — a run that discovers a missing model after a
 40-minute load is an expensive lesson.
 
@@ -85,7 +113,8 @@ ExecStart=/path/to/venv/bin/agentic-ai run --config config.json --goal-file brie
 Restart=no
 NoNewPrivileges=true
 ProtectSystem=strict
-ReadWritePaths=/var/lib/agentic-ai
+# the state dir, the GGUF location, and the llama-server log/cache dir
+ReadWritePaths=/var/lib/agentic-ai /home/ai-agent/models /home/ai-agent/.cache
 PrivateTmp=true
 ```
 
@@ -101,6 +130,8 @@ PrivateTmp=true
 | `commands.<id>.timeout_seconds` | Per-command wall clock; process group is SIGTERM→SIGKILLed on expiry. |
 | `commands.<id>.resume_policy` | `"rerun"` (default; replay after crash) or `"manual"` (fail the task — for non-idempotent commands). |
 | `ollama.keep_alive` | How long the resident model stays warm between turns. Too short and cache-expiry reloads appear mid-wave (handled, but wasteful). |
+| `llamacpp.gpu_layers` | `-ngl` for llama-server (default 23). Tune against the VRAM budget of the single GPU. |
+| `llamacpp.cache_type_k` / `llamacpp.cache_type_v` | KV cache quantization (`q8_0` default). Lowering saves VRAM at a quality cost. |
 
 ## 6. What to watch during a run
 
@@ -108,10 +139,11 @@ PrivateTmp=true
 - `runs/<id>/waves/` and `switches/` — one file each per wave/switch, with
   full assignments and `/api/ps` before/after evidence.
 - `runs/<id>/attempts/` — raw model I/O per turn when a task misbehaves.
-- `ollama ps` — at any instant exactly zero or one of the two models should
-  be listed. If you ever see both, something outside this system loaded a
-  model; the run will refuse to proceed (or, with `dedicated_ollama`, will
-  unload it at the next barrier).
+- `ollama ps` — at any instant exactly zero or one of the Ollama models should
+  be listed, and (when the llama.cpp model is the resident one) exactly one
+  `llama-server` process should be running. If you ever see overlap, something
+  outside this system loaded a model; the run will refuse to proceed (or, with
+  `dedicated_ollama`, will unload it at the next barrier).
 
 ## 7. Troubleshooting
 

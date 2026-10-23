@@ -315,7 +315,7 @@ class AgentRuntime:
                 system_prompt=system_prompt(task.role),
                 task_prompt=self._task_prompt(context),
                 history=context["history"],
-                context_length=self.config.ollama.context_length,
+                context_length=self.config.context_length_for_model(task.model),
                 num_predict=self.config.roles[task.role].num_predict,
                 safety_reserve=self.config.limits.safety_reserve_tokens,
             )

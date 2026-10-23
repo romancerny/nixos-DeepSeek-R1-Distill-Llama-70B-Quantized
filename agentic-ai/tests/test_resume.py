@@ -1,11 +1,11 @@
 import tempfile
 import unittest
 
-from agentic_ai.config import Config, OllamaConfig
+from agentic_ai.config import OllamaConfig
 from agentic_ai.ollama import OllamaClient
 from agentic_ai.runner import ProjectRunner
 from agentic_ai.storage import RunStore
-from fake_ollama import FakeOllamaServer
+from fake_ollama import FakeOllamaServer, ollama_only_config
 from test_end_to_end import WorkflowResponder
 
 
@@ -24,8 +24,8 @@ class FlakyResponder:
 
 class ResumeTests(unittest.TestCase):
     def _config(self, url):
-        return Config(
-            ollama=OllamaConfig(
+        return ollama_only_config(
+            OllamaConfig(
                 base_url=url,
                 load_timeout_seconds=2,
                 request_timeout_seconds=3,

@@ -313,6 +313,33 @@ ollama run deepseek-r1:70b
 
 Type `/bye` to exit the model chat.
 
+### Step 4.4: Install the Uncensored GGUF Research Model (llama.cpp)
+The agentic-ai orchestrator's default research model is not served by Ollama —
+it runs through llama.cpp and is only usable via the `ai-agent` account. As
+`roman`:
+
+```bash
+# 1. Ensure the model directory exists (also created declaratively via
+#    systemd.tmpfiles as /home/ai-agent/models, owner ai-agent:ai-sandbox)
+sudo -u ai-agent mkdir -p /home/ai-agent/models
+
+# 2. Download the GGUF (~50GB) into the ai-agent home
+sudo -u ai-agent wget -O \
+  /home/ai-agent/models/DeepSeek-R1-Distill-Llama-70B-Uncensored-v2-Unbiased-Reasoner.Q5_K_M.gguf \
+  <model-download-url>
+
+# 3. Verify it runs (llama-cpp with cudaSupport is in systemPackages)
+sudo -i -u ai-agent
+llama-cli -m ~/models/DeepSeek-R1-Distill-Llama-70B-Uncensored-v2-Unbiased-Reasoner.Q5_K_M.gguf \
+  -ngl 23 -c 16384 -ctk q8_0 -ctv q8_0
+```
+
+The agentic-ai tool spawns `llama-server` with these same flags (plus
+`--jinja --host 127.0.0.1 --port 8085`) automatically at model-switch
+barriers — never leave a standalone llama-server running for this model, as
+the residency manager enforces exactly one resident model across both
+backends.
+
 ---
 
 ## 📅 Daily Operational Workflow

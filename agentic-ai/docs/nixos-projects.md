@@ -51,12 +51,25 @@ Typical layout:
    `OLLAMA_NUM_PARALLEL=1` and a context length matching
    `ollama.context_length` in the config (16384).
 
-2. **Models pulled in advance:**
+2. **Models available in advance.**
+
+   Ollama serves the coding model (and optionally the classic research model):
 
    ```bash
-   ollama pull deepseek-r1:70b
    ollama pull qwen2.5-coder:32b
+   ollama pull deepseek-r1:70b   # optional; no longer the default
    ```
+
+   The default research model is the GGUF served by llama.cpp. Install
+   `llama-cpp` (CUDA build: `pkgs.llama-cpp.override { cudaSupport = true; }`)
+   and place the file at the path configured as `llamacpp.model_path` —
+   by default `~/models/DeepSeek-R1-Distill-Llama-70B-Uncensored-v2-Unbiased-Reasoner.Q5_K_M.gguf`
+   relative to the user running the tool (the `ai-agent` account on this host,
+   i.e. `/home/ai-agent/models/…`; the neighbouring `configuration.nix` creates
+   that directory via `systemd.tmpfiles`). The orchestrator spawns
+   `llama-server -m <path> -ngl 23 -c 16384 -ctk q8_0 -ctv q8_0 --jinja`
+   itself; verify the model standalone with the equivalent
+   `llama-cli -m <path> -ngl 23 -c 16384 -ctk q8_0 -ctv q8_0`.
 
    (Or edit `roles` in the project `config.json` to use different models.)
 
@@ -98,8 +111,9 @@ Typical layout:
    echo '.agentic-ai/' >> .gitignore
    ```
 
-5. **Preflight** — validates config, state dir, Ollama connectivity, model
-   availability, command executables. Loads no large model:
+5. **Preflight** — validates config, state dir, Ollama connectivity, the
+   llama.cpp binary and GGUF file, model availability, command executables.
+   Loads no large model:
 
    ```bash
    agentic-ai doctor --config config.json
