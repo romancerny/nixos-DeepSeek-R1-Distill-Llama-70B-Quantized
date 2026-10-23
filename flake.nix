@@ -21,6 +21,15 @@
         ./hardware-configuration.nix
         ./configuration.nix
 
+        # Add this block here to apply the CUDA overlay across the flake
+        {
+          nixpkgs.overlays = [
+            (final: prev: {
+              llama-cpp = prev.llama-cpp.override { cudaSupport = true; };
+            })
+          ];
+        }
+
         # Wire up Home Manager modularly within the NixOS system layer
         home-manager.nixosModules.home-manager
         {
@@ -39,6 +48,11 @@
               home.stateVersion = "24.11";
               
               imports = [ ./tmux.nix ]; # 👈 SHATTERS REPETITION AND SYMLINKS DIRECTLY
+
+              # 👇 ADD THIS BLOCK: This exposes llama-cpp ONLY to the ai-agent user
+              home.packages = [
+                pkgs.llama-cpp
+              ];
             };
           };
         }
