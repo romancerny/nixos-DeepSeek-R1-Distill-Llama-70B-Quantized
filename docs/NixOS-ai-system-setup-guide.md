@@ -119,9 +119,10 @@ Now we wipe the old Ubuntu system and install a completely pure system structure
 1. Follow the on-screen menus (Language: English UK, Keyboard layout: UK).
 2. When you reach the **Desktop Environment** screen, tick **GNOME**.
 3. When reaching **Partition Setup**, choose **Erase Disk** to cleanly remove the old Ubuntu installation from the internal NVMe drive (`nvme0n1`).
-4. **CRUCIAL:** Tick the checkbox that reads **"Allow Unfree Software"** so the machine can pull your dedicated NVIDIA display drivers.
-5. Hit **Install** and wait.
-6. **CRUCIAL STEP:** When the installer finishes, **DO NOT let it restart.** Untick the "Restart automatically" box if present and close the installer. Stay inside the live USB environment — Phase 3 happens here.
+4. **DISK ENCRYPTION (CRUCIAL):** Tick the checkbox that reads **"Encrypt system"** (or **"Enable Encryption"**). Enter a strong, secure passphrase when prompted. You will be required to type this passphrase every time you power on the laptop to unlock your data.
+5. **CRUCIAL:** Tick the checkbox that reads **"Allow Unfree Software"** so the machine can pull your dedicated NVIDIA display drivers.
+6. Hit **Install** and wait.
+7. **CRUCIAL STEP:** When the installer finishes, **DO NOT let it restart.** Untick the "Restart automatically" box if present and close the installer. Stay inside the live USB environment — Phase 3 happens here.
 
 ---
 
