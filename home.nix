@@ -62,13 +62,19 @@
       };
 
       # 3. ADD THIS BLOCK: Checks your shell nesting depth dynamically
+      # 🌟 UPDATE THIS BLOCK: Emits the exact shell level number dynamically
       custom.nix_subshell = {
-        # Executes a script checking if SHLVL is greater than 1 (adjust if your terminal starts at 2)
+        # Only displays if SHLVL is strictly greater than 1
         when = '' [ "$SHLVL" -gt 1 ] ''; 
-        command = "echo 'impure'";
+        
+        # Prints out the current numeric value of the SHLVL environment variable
+        command = "echo $SHLVL"; 
+        
         style = "bold blue";
-        symbol = "❄️ ";
-        format = "via [$symbol$output]($style) ";
+        symbol = "❄️  ";
+        
+        # Configured to render exactly as: ❄️ <SHLVL>-impure
+        format = "via [$symbol$output-impure]($style) ";
       };
 
       custom.ram_usage = {
