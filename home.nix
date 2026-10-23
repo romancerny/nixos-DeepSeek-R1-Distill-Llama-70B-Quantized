@@ -54,15 +54,23 @@
     enable = true;
     enableZshIntegration = true;
     settings = {
-      format = "$directory$git_branch$nix_shell\${custom.ram_usage}$character";
+      format = "$directory$git_branch\${custom.nix_subshell}\${custom.ram_usage}$character";
+
+      # 2. Disable the default nix_shell component since it won't catch transient CLI invocations
       nix_shell = {
-        disabled = false;
-        symbol = "❄️ ";
-        style = "bold blue";
-        impure_msg = "impure";
-        pure_msg = "pure";
-        format = "via [$symbol$state]($style) ";
+        disabled = true; 
       };
+
+      # 3. ADD THIS BLOCK: Checks your shell nesting depth dynamically
+      custom.nix_subshell = {
+        # Executes a script checking if SHLVL is greater than 1 (adjust if your terminal starts at 2)
+        when = '' [ "$SHLVL" -gt 1 ] ''; 
+        command = "echo 'impure'";
+        style = "bold blue";
+        symbol = "❄️ ";
+        format = "via [$symbol$output]($style) ";
+      };
+
       custom.ram_usage = {
         when = "true";
         command = ''
