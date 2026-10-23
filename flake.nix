@@ -42,8 +42,8 @@
             roman.imports = [ ./home.nix ];
             
             # 2. AI-Agent gets a lightweight home container mapping ONLY your shared tmux setup
-            # 🌟 CHANGE THIS LINE: Add '{ pkgs }: ' before the opening block to bring pkgs into scope!
-            ai-agent = { pkgs }: { 
+            # 🌟 FIXED LINE: Added ', ...' to accept the extra background modules like lib/config!
+            ai-agent = { pkgs, ... }: { 
               home.username = "ai-agent";
               home.homeDirectory = "/home/ai-agent";
               home.stateVersion = "24.11";
