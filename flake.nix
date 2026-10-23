@@ -42,14 +42,15 @@
             roman.imports = [ ./home.nix ];
             
             # 2. AI-Agent gets a lightweight home container mapping ONLY your shared tmux setup
-            ai-agent = { ... }: {
+            # 🌟 CHANGE THIS LINE: Add '{ pkgs }: ' before the opening block to bring pkgs into scope!
+            ai-agent = { pkgs }: { 
               home.username = "ai-agent";
               home.homeDirectory = "/home/ai-agent";
               home.stateVersion = "24.11";
               
-              imports = [ ./tmux.nix ]; # 👈 SHATTERS REPETITION AND SYMLINKS DIRECTLY
+              imports = [ ./tmux.nix ];
 
-              # 👇 ADD THIS BLOCK: This exposes llama-cpp ONLY to the ai-agent user
+              # 📦 Exposes the CUDA-overridden llama-cpp package cleanly into the path
               home.packages = [
                 pkgs.llama-cpp
               ];
