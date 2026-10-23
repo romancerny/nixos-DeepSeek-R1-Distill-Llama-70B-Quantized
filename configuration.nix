@@ -234,6 +234,12 @@ in
     
     # Hyphenated package handling:
     pkgs."aider-chat"
+
+    # For screenshoting
+    grim
+    slurp
+    wl-clipboard
+    sway-contrib.grimshot
   ];
 
   # ---------------------------------------------------------------------
