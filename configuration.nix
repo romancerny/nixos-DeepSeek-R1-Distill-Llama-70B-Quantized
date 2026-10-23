@@ -255,6 +255,13 @@ in
 
     # File managers
     mc superfile yazi
+
+
+    # For screenshoting
+    grim
+    slurp
+    wl-clipboard
+    sway-contrib.grimshot
   ];
 
   # 🎨 MODULAR THEMING SUBSYSTEM
