@@ -211,7 +211,15 @@ in
     "d /home/ai-agent/models 0750 ai-agent ai-sandbox - -"
   ];
 
+  # 🐳 VIRTUALISATION LAYER (UPDATED FOR PODMAN)
   virtualisation.libvirtd.enable = true;
+  virtualisation.containers.enable = true; # Enables common configuration files under /etc/containers
+  virtualisation.podman = {
+    enable = true;
+    dockerCompat = true;                  # Creates a 'docker' alias mapping directly to podman
+    defaultNetwork.settings.dns_enabled = true; # Critical for podman-compose container DNS resolution
+  };  
+
   programs.virt-manager.enable = true;
   services.tor.enable = true;
   services.tor.client.enable = true;
@@ -276,6 +284,8 @@ in
     # File managers
     mc superfile yazi
 
+    # Container Orchestration
+    podman-compose # 👈 ADDED HERE GLOBALLY FOR ALL USERS
 
     # For screenshoting
     grim
