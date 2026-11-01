@@ -95,7 +95,12 @@ in
   ];
 
   nix.settings.experimental-features = [ "nix-command" "flakes" ];
-  nixpkgs.config.allowUnfree = true;
+    nixpkgs.config = {
+    allowUnfree = true;
+    problems.handlers = {
+      "posthog".broken = "warn"; # Bypasses the broken package check for posthog
+    };
+  };
 
   boot.loader.systemd-boot.enable = true;
   boot.loader.efi.canTouchEfiVariables = true;
