@@ -223,6 +223,22 @@ in
   programs.virt-manager.enable = true;
   services.tor.enable = true;
   services.tor.client.enable = true;
+  # Enable CUPS to print documents
+  services.printing = {
+    enable = true;
+    # Add your specific printer drivers here (e.g., pkgs.brlaser, pkgs.hplip, etc.)
+    drivers = with pkgs; [
+      brlaser # Example for Brother printers
+      # hplip  # Example for HP printers
+    ];
+  };
+
+  # Optional: Enable network printer discovery (Avahi/mDNS)
+  services.avahi = {
+    enable = true;
+    nssmdns4 = true;
+    openFirewall = true;
+  };
 
   # 🔒 FIREWALL & LAN NETWORK ISOLATION SANDBOX
   users.groups.ai-sandbox = {};
