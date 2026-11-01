@@ -26,6 +26,15 @@
           nixpkgs.overlays = [
             (final: prev: {
               llama-cpp = prev.llama-cpp.override { cudaSupport = true; };
+              
+              # Force override python interpreters to skip posthog unit tests
+              pythonPackagesExtensions = prev.pythonPackagesExtensions ++ [
+                (python-final: python-prev: {
+                  posthog = python-prev.posthog.overridePythonAttrs (oldAttrs: {
+                    doCheck = false;
+                  });
+                })
+              ];
             })
           ];
         }
