@@ -13,6 +13,7 @@
   fonts.fontconfig.enable = true;
   home.packages = [
     pkgs.wiremix
+    pkgs.cups
     (pkgs.stdenv.mkDerivation {
       pname = "ioskeley-mono";
       version = "2.1.0";
