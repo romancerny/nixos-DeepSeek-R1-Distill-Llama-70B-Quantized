@@ -235,6 +235,7 @@ in
     drivers = with pkgs; [
       brlaser # Example for Brother printers
       # hplip  # Example for HP printers
+      canon-cups-ufr2 # 🖨️ ADDED: Exposes the full Canon UFR II filter stack to CUPS
     ];
   };
 
