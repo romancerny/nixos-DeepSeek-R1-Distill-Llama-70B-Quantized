@@ -180,6 +180,22 @@ class MemoryRuntimeTests(unittest.TestCase):
         with self.assertRaises(Exception):
             TranscriptBuilder.load(self.store.state_dir, self.store.run_id)
 
+    def test_transcript_redaction_revokes_dream_eligibility(self):
+        self.store.update_run(status="succeeded")
+        TranscriptBuilder(self.config).finalize(self.store)
+        with mock.patch("agentic_ai.identity.current_username", return_value="roman"):
+            manifest = TranscriptBuilder.redact(
+                self.store.state_dir,
+                self.store.run_id,
+                reason="Revoke private evidence",
+                actor=HUMAN,
+            )
+        self.assertTrue(manifest["redacted"])
+        self.assertFalse(manifest["dream_eligible"])
+        self.assertFalse((self.store.run_dir / "transcripts" / "payload.json").exists())
+        with self.assertRaises(Exception):
+            TranscriptBuilder.load(self.store.state_dir, self.store.run_id)
+
     def test_command_output_is_capped_without_blocking(self):
         config = replace(
             self.config,

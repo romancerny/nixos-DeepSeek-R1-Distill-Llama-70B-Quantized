@@ -11,6 +11,7 @@ from pathlib import Path
 from .backends import ModelBackends
 from .config import Config, load_config
 from .documents import MemoryDocument
+from .dreaming import DreamRunner
 from .errors import AgenticError, ConfigurationError, StorageError
 from .identity import (
     AGENT_OS_USER,
@@ -24,6 +25,7 @@ from .memory import MemoryStore
 from .reporting import generate_report
 from .runner import ProjectRunner
 from .storage import FileLock, RunStore, read_json
+from .transcripts import TranscriptBuilder
 
 
 def _config_from_snapshot(store: RunStore) -> Config:
@@ -256,6 +258,47 @@ def _handle_memory(arguments) -> int:
     raise ConfigurationError(f"Unknown memory action: {action}")
 
 
+def _handle_dream(arguments) -> int:
+    config = load_config(arguments.config)
+    action = arguments.dream_action
+    if action in {"run", "resume"}:
+        require_current_user(AGENT_OS_USER)
+    runner = DreamRunner(config, approve_hosted=arguments.approve_hosted)
+    if action == "run":
+        job = runner.create_job()
+        result = runner.execute(job["job_id"])
+        print(json.dumps(result, indent=2, sort_keys=True))
+        return 0
+    if action == "resume":
+        print(json.dumps(runner.execute(arguments.job_id), indent=2, sort_keys=True))
+        return 0
+    if action == "list":
+        print(json.dumps(runner.list_proposals(arguments.job_id), indent=2, sort_keys=True))
+        return 0
+    if action == "review":
+        print(runner.review(arguments.job_id) or "No dream proposals found.")
+        return 0
+    if action == "show":
+        print(json.dumps(runner.load_proposal(arguments.proposal_id), indent=2, sort_keys=True))
+        return 0
+    if action == "approve":
+        decision = runner.approve(arguments.proposal_id, _human_actor(arguments))
+        print(json.dumps(decision, indent=2, sort_keys=True))
+        return 0
+    if action == "reject":
+        decision = runner.reject(
+            arguments.proposal_id, _human_actor(arguments), reason=arguments.reason
+        )
+        print(json.dumps(decision, indent=2, sort_keys=True))
+        return 0
+    if action == "status":
+        job = runner.load_job(arguments.job_id)
+        run = RunStore.open(job["state_dir"], arguments.job_id).load_run()
+        print(json.dumps({"job": job, "metrics": run.get("metrics", {})}, indent=2, sort_keys=True))
+        return 0
+    raise ConfigurationError(f"Unknown dream action: {action}")
+
+
 def _offload(config: Config, state_dir: str) -> int:
     lock_path = Path(config.execution.lock_path).expanduser()
     client = ModelBackends(config)
@@ -379,6 +422,46 @@ def build_parser() -> argparse.ArgumentParser:
     import_command = memory_command("import", scoped=False)
     import_command.add_argument("--source", required=True)
     import_command.add_argument("--expected")
+
+    dream = subparsers.add_parser("dream", help="Out-of-band evidence-backed memory curation")
+    dream_commands = dream.add_subparsers(dest="dream_action", required=True)
+
+    def dream_command(name):
+        command = dream_commands.add_parser(name)
+        config_option(command)
+        command.add_argument("--approve-hosted", action="store_true")
+        command.add_argument("--actor-name")
+        return command
+
+    dream_command("run")
+    resume_dream = dream_command("resume")
+    resume_dream.add_argument("job_id")
+    list_dream = dream_command("list")
+    list_dream.add_argument("--job-id")
+    review_dream = dream_command("review")
+    review_dream.add_argument("--job-id")
+    show_dream = dream_command("show")
+    show_dream.add_argument("proposal_id")
+    approve_dream = dream_command("approve")
+    approve_dream.add_argument("proposal_id")
+    reject_dream = dream_command("reject")
+    reject_dream.add_argument("proposal_id")
+    reject_dream.add_argument("--reason", required=True)
+    status_dream = dream_command("status")
+    status_dream.add_argument("job_id")
+
+    transcript = subparsers.add_parser("transcript", help="Transcript privacy administration")
+    transcript_commands = transcript.add_subparsers(dest="transcript_action", required=True)
+    redact_transcript = transcript_commands.add_parser("redact")
+    redact_transcript.add_argument("run_id")
+    redact_transcript.add_argument("--reason", required=True)
+    redact_transcript.add_argument("--actor-name")
+    state_option(redact_transcript)
+
+    metrics = subparsers.add_parser("metrics", help="Compare two runs without claiming causation")
+    metrics.add_argument("baseline_run")
+    metrics.add_argument("candidate_run")
+    state_option(metrics)
     return parser
 
 
@@ -454,6 +537,45 @@ def main(argv: list[str] | None = None) -> int:
             return _offload(load_config(arguments.config), arguments.state_dir)
         if arguments.command == "memory":
             return _handle_memory(arguments)
+        if arguments.command == "dream":
+            return _handle_dream(arguments)
+        if arguments.command == "transcript":
+            if arguments.transcript_action == "redact":
+                actor = _human_actor(arguments)
+                manifest = TranscriptBuilder.redact(
+                    arguments.state_dir,
+                    arguments.run_id,
+                    reason=arguments.reason,
+                    actor=actor,
+                )
+                print(json.dumps(manifest, indent=2, sort_keys=True))
+                return 0
+        if arguments.command == "metrics":
+            baseline = RunStore.open(arguments.state_dir, arguments.baseline_run).load_run()
+            candidate = RunStore.open(arguments.state_dir, arguments.candidate_run).load_run()
+            keys = sorted(
+                set(baseline.get("metrics", {})) | set(candidate.get("metrics", {}))
+            )
+            comparison = {
+                "baseline": {
+                    "run_id": arguments.baseline_run,
+                    "status": baseline["status"],
+                    "metrics": baseline.get("metrics", {}),
+                },
+                "candidate": {
+                    "run_id": arguments.candidate_run,
+                    "status": candidate["status"],
+                    "metrics": candidate.get("metrics", {}),
+                },
+                "delta": {
+                    key: candidate.get("metrics", {}).get(key, 0)
+                    - baseline.get("metrics", {}).get(key, 0)
+                    for key in keys
+                },
+                "note": "Observed differences do not prove that memory caused the outcome; compare repeated equivalent tasks.",
+            }
+            print(json.dumps(comparison, indent=2, sort_keys=True))
+            return 0
         parser.error(f"Unknown command {arguments.command}")
         return 2
     except (AgenticError, OSError) as exc:

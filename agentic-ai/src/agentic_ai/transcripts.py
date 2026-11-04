@@ -6,7 +6,8 @@ from typing import Any
 
 from .config import Config
 from .errors import StorageError
-from .storage import RunStore, atomic_write_json, read_json, sha256_file, utc_now
+from .identity import Actor, MemoryPolicy
+from .storage import FileLock, RunStore, atomic_write_json, read_json, sha256_file, utc_now
 
 
 class TranscriptBuilder:
@@ -53,6 +54,7 @@ class TranscriptBuilder:
             "schema_version": 1,
             "run_id": store.run_id,
             "project_id": self.config.memory.project_id,
+            "memory_root": self.config.memory.root,
             "classification": self.config.memory.classification,
             "status": run["status"],
             "created_at": run["created_at"],
@@ -62,7 +64,7 @@ class TranscriptBuilder:
             "attempts": attempts,
         }
         transcripts_dir = store.run_dir / "transcripts"
-        atomic_write_json(transcripts_dir / "payload.json", transcript)
+        atomic_write_json(transcripts_dir / "payload.json", transcript, mode=0o640)
         actual_digest = sha256_file(transcripts_dir / "payload.json")
         eligible = bool(
             self.config.memory.enabled
@@ -73,6 +75,7 @@ class TranscriptBuilder:
             "schema_version": 1,
             "run_id": store.run_id,
             "project_id": self.config.memory.project_id,
+            "memory_root": self.config.memory.root,
             "classification": self.config.memory.classification,
             "status": run["status"],
             "created_at": transcript["created_at"],
@@ -85,13 +88,45 @@ class TranscriptBuilder:
             "dream_eligible": eligible,
             "redacted": False,
         }
-        atomic_write_json(transcripts_dir / "manifest.json", manifest)
+        atomic_write_json(transcripts_dir / "manifest.json", manifest, mode=0o640)
         store.append_event(
             "transcript_finalized",
             payload_sha256=actual_digest,
             dream_eligible=eligible,
             attempts=len(attempts),
         )
+        return manifest
+
+    @staticmethod
+    def redact(state_dir: str | Path, run_id: str, *, reason: str, actor: Actor) -> dict[str, Any]:
+        MemoryPolicy.require_human(actor, "Transcript redaction")
+        directory = Path(state_dir).expanduser().resolve() / "runs" / run_id / "transcripts"
+        manifest = read_json(directory / "manifest.json")
+        memory_root = manifest.get("memory_root")
+        if not memory_root:
+            raise StorageError("Transcript has no memory root for review locking")
+        with FileLock(
+            Path(memory_root) / "dreams" / "decisions" / "review.lock", mode=0o660
+        ):
+            return TranscriptBuilder._redact_locked(state_dir, run_id, reason=reason, actor=actor)
+
+    @staticmethod
+    def _redact_locked(state_dir: str | Path, run_id: str, *, reason: str, actor: Actor) -> dict[str, Any]:
+        MemoryPolicy.require_human(actor, "Transcript redaction")
+        directory = Path(state_dir).expanduser().resolve() / "runs" / run_id / "transcripts"
+        manifest_path = directory / "manifest.json"
+        manifest = read_json(manifest_path)
+        if not manifest.get("redacted"):
+            manifest["redacted"] = True
+            manifest["dream_eligible"] = False
+            manifest["redacted_at"] = utc_now()
+            manifest["redaction_reason"] = reason
+            manifest["redacted_by"] = actor.to_dict()
+            payload_name = Path(manifest["payload_path"])
+            if payload_name.is_absolute() or ".." in payload_name.parts or len(payload_name.parts) != 1:
+                raise StorageError("Unsafe transcript payload path")
+            (directory / payload_name).unlink(missing_ok=True)
+            atomic_write_json(manifest_path, manifest, mode=0o640)
         return manifest
 
     @staticmethod
@@ -111,4 +146,12 @@ class TranscriptBuilder:
         payload = read_json(payload_path)
         if payload.get("run_id") != run_id:
             raise StorageError("Transcript run identity mismatch")
+        run_dir = directory.parent
+        for record in manifest.get("source_files", []):
+            relative = Path(record["path"])
+            if relative.is_absolute() or ".." in relative.parts:
+                raise StorageError("Unsafe transcript source path")
+            source = run_dir / relative
+            if sha256_file(source) != record["sha256"] or source.stat().st_size != record["size_bytes"]:
+                raise StorageError(f"Transcript source changed: {record['path']}")
         return manifest, payload

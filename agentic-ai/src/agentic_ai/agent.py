@@ -115,11 +115,13 @@ class AgentRuntime:
         residency: ResidencyManager,
         *,
         approve_hosted: bool = False,
+        dreaming: bool = False,
     ):
         self.store = store
         self.config = config
         self.residency = residency
         self.approve_hosted = approve_hosted
+        self.dreaming = dreaming
 
     def start(
         self,
@@ -379,6 +381,7 @@ class AgentRuntime:
                 task.model,
                 context.get("data_classification", "private"),
                 approved=self.approve_hosted,
+                dreaming=self.dreaming,
             )
         except MemoryPermissionError as exc:
             return self._fail(task, context, str(exc))
