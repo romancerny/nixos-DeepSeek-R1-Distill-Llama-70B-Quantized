@@ -261,3 +261,63 @@ Every model call keeps its exact request messages, the raw streamed response
 (before reasoning-tag stripping or JSON parsing), and the parsed result or
 structured error. Use these to debug protocol failures, prompt regressions,
 or model behaviour; nothing is overwritten across attempts or turns.
+
+## `transcripts/` — canonical cross-run evidence
+
+Terminal runs can produce `payload.json` and `manifest.json`. The payload binds
+the run snapshot, parsed events, and full attempt request/response/result
+content to project ID and classification. The manifest records payload and
+source hashes/sizes, terminal status, memory root, retention timestamps, and
+`dream_eligible`. Dream loading verifies both payload and current source files.
+
+Redaction marks the manifest ineligible and removes the canonical payload;
+restricted raw attempts may remain under the run retention policy. A redacted,
+tampered, unconsenting, wrong-project, wrong-classification, expired, or
+incomplete transcript is never selected for dreaming.
+
+## Memory catalogs and versions
+
+Each memory scope/project owns one `catalog.json`, a map from document IDs to
+current version/content hashes. It is the atomic visibility boundary for a
+single- or multi-document mutation. Content-addressed Markdown objects and
+version JSON records live below the same scope. A version contains actor,
+operation, parent/current SHA-256, mutation ID, timestamp, and run/task/dream
+provenance.
+
+`operations/<mutation-id>.json` is the pending/terminal recovery journal.
+`audit.jsonl` contains metadata-only hash-chained events. The catalog lock is
+held through expected-hash recheck, catalog replacement, audit recovery, and
+redaction cleanup. A torn final audit append is repaired; earlier corruption
+is rejected. Rollback creates a new version. Redaction markers fail closed
+before payload cleanup and ordinary writes cannot resurrect them.
+
+Canonical documents are UTF-8 Markdown with `+++` TOML front matter. Metadata
+includes ID, title, kind, summary, classification, tags, review status, and
+schema version. The search database is a per-UID disposable index and is never
+used as evidence or authority.
+
+## Dream jobs, proposals, and decisions
+
+Dream state lives below `<memory-root>/dreams`:
+
+- `jobs/<job-id>/job.json` — selection, immutable input hashes, phase, and
+  validated-finding hash. The nested ordinary `RunStore` holds subject/curator
+  artifacts and model attempts.
+- `proposals/<proposal-id>.json` — target, operation, content, base version/hash,
+  evidence, prevalence, rationale, validation reasons, and unified diff.
+- `decisions/<proposal-id>.json` — human-owned approving/approved/rejected
+  terminal state, actor, approval mutation ID, and committed versions.
+
+Every proposal targets one memory catalog. Approval rechecks source
+transcripts, input/finding hashes, evidence, prevalence, scope, and current
+base hash under the shared review lock. The same deterministic approval
+mutation ID makes a post-commit crash safe to retry. Transcript redaction uses
+the same review lock, preventing approval from racing revocation.
+
+## Global execution and llama.cpp process records
+
+The configured per-UID executor lock is shared by every project state
+directory and dream worker. llama.cpp's process registry contains PID, UID,
+Linux start ticks, model identity, and argv. A restarted backend adopts or
+terminates only a process whose identity still matches; stale/PID-reused
+records are removed without signalling the unrelated process.

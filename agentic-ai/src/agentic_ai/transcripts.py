@@ -143,6 +143,8 @@ class TranscriptBuilder:
         payload_path = directory / payload_name
         if sha256_file(payload_path) != manifest["payload_sha256"]:
             raise StorageError(f"Transcript hash mismatch: {run_id}")
+        if payload_path.stat().st_size != manifest["payload_size_bytes"]:
+            raise StorageError(f"Transcript size mismatch: {run_id}")
         payload = read_json(payload_path)
         if payload.get("run_id") != run_id:
             raise StorageError("Transcript run identity mismatch")

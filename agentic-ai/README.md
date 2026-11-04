@@ -1,8 +1,11 @@
 # agentic-ai
 
-A fully local, autonomous, multi-agent project system built around one hard
-hardware constraint: **only one large model can be resident in GPU memory at a
-time.** The default research model is the uncensored
+A local-first, autonomous, multi-agent project system built around one hard
+hardware constraint: **only one large local model can be resident in GPU memory at a
+time.** Versioned Markdown memory, progressive-disclosure skills, and
+review-gated dreaming provide cross-run learning without changing that constraint.
+An optional hosted Kimi K3.1 Pro backend is available for explicitly approved
+public/shareable work; private workflows stay local. The default research model is the uncensored
 `DeepSeek-R1-Distill-Llama-70B-Uncensored-v2-Unbiased-Reasoner.Q5_K_M.gguf`,
 served by a llama.cpp `llama-server` subprocess that the orchestrator spawns
 and stops on demand (`-ngl 23 -c 16384 -ctk q8_0 -ctv q8_0`); it plans,
@@ -45,6 +48,25 @@ The architecture applies the workflow patterns taught in DeepLearning.AI's
   never be weakened by a replan.
 - **Crash-safe resume.** Interrupt at any point — mid-inference, mid-tool,
   mid-switch — and `resume` continues without repeating completed work.
+- **Versioned, permissioned memory.** Human-curated Markdown/TOML guidance and
+  procedural skills coexist with low-trust agent scratch/inbox memories. Every
+  mutation has immutable provenance, a recoverable operation journal, an audit
+  event, and locked SHA-256 compare-and-swap. Rollback, redaction, verification,
+  and manifest-based export/import are built in.
+- **Progressive disclosure.** Curated guidance is bounded and version-pinned
+  per run. Search returns small metadata matches; full memory and `SKILL.md`
+  bodies load only when relevant.
+- **Evidence-backed dreaming.** An out-of-band worker selects consenting,
+  permission-matched transcripts, runs logical subject/curator tasks, computes
+  prevalence deterministically, and writes staged diffs. Only `roman` can
+  approve shared-memory promotion. Dream jobs never update model weights or
+  promote their own output.
+- **Local and hosted routing.** Ollama and llama.cpp retain the verified
+  one-local-model invariant. Kimi calls use bounded streaming, explicit
+  approval, no stored credentials, and context-wide privacy taint.
+- **Operating-system authority.** Inference, tools, and dream workers run as
+  `ai-agent`; human curation, approval, rollback, redaction, and export run as
+  `roman`. One per-UID executor lock spans every project and dream job.
 
 ## Requirements
 
@@ -63,7 +85,10 @@ The architecture applies the workflow patterns taught in DeepLearning.AI's
 - Roles can point at any Ollama model by editing `roles` in the config; the
   llama.cpp GGUF is referenced by the alias configured as `llamacpp.model_name`.
 - Hardware where one such model fits comfortably and two do not — the entire
-  design exists for exactly that situation.
+  local residency design exists for exactly that situation.
+- Optional: a Kimi Code credential for `k3.1-pro`. Hosted use requires explicit
+  configuration and `--approve-hosted`; it is never needed for local memory or
+  dreaming. See [Kimi Code documentation](https://www.kimi.com/code/docs/en/).
 
 ## Nix / multiple projects
 
@@ -117,9 +142,40 @@ instead of `PYTHONPATH=src python3 -m agentic_ai …`.
 | `resume RUN_ID --config C` | Continue a paused, interrupted, or crashed run without repeating completed work. |
 | `status RUN_ID [--json]` | Print the canonical run snapshot. |
 | `report RUN_ID` | Print (and regenerate) the JSON/Markdown report. |
-| `offload --config C` | Unload every managed model under the executor lock. |
+| `offload --config C` | Unload every managed local model under the global executor lock. |
+| `memory init/search/read/put/history/diff/rollback/delete/redact/verify/reindex/export/import` | Manage portable versioned memories and skills with OS-identity enforcement. |
+| `dream run/resume/list/review/show/approve/reject/status` | Execute/resume dreams as `ai-agent`; inspect and promote/reject proposals as `roman`. |
+| `transcript redact RUN_ID --reason R` | Revoke a canonical transcript and all future dream eligibility as `roman`. |
+| `metrics BASELINE CANDIDATE` | Compare observed run metrics without claiming causation. |
 
-All commands take `--state-dir` (default `.agentic-ai`).
+All commands take `--state-dir` where applicable (default `.agentic-ai`).
+`run`, `resume`, `offload`, and dream execution require the `ai-agent` OS user;
+human memory mutation and dream decisions require `roman`. Hosted roles also
+require `--approve-hosted` and an approved public/shareable configuration.
+
+## Memory and dreaming quickstart
+
+Start with `config.nixos.example.json` on the workstation, or enable `memory`
+and `dreaming_enabled` in a project config with a writable test root. Then:
+
+```bash
+# Human: initialize curated roots and inspect memories.
+agentic-ai memory init --root /var/lib/agentic-ai/memory
+agentic-ai memory search --root /var/lib/agentic-ai/memory --query "testing"
+
+# Agent: run one dream over consenting terminal runs and produce proposals.
+sudo -u ai-agent agentic-ai dream run --config /etc/agentic-ai/config.json
+
+# Human: review evidence/diffs, then decide. Nothing is auto-promoted.
+agentic-ai dream review --config /etc/agentic-ai/config.json
+agentic-ai dream approve PROPOSAL_ID --config /etc/agentic-ai/config.json
+
+# Verify the version graph and audit chains.
+agentic-ai memory verify --root /var/lib/agentic-ai/memory
+```
+
+See [docs/nixos-memory-dreaming.md](docs/nixos-memory-dreaming.md) for the full
+NixOS setup, optional timer, redaction, export, and hosted privacy procedure.
 
 ## How a run proceeds
 
@@ -222,6 +278,14 @@ prompts/exercises can be aligned more precisely.
 - [docs/file-protocol.md](docs/file-protocol.md) — run layout and every
   durable schema (`run.json`, plan, contexts, waves, switches, evaluations,
   events).
+- [docs/memory-dreaming-architecture.md](docs/memory-dreaming-architecture.md) — canonical formats, CAS transactions, privacy, and dream invariants.
+- [docs/security-model.md](docs/security-model.md) — trust boundaries, limitations, and threat mitigations.
+- [docs/presentation-traceability.md](docs/presentation-traceability.md) — feasibility and every concept from the source presentation.
+- [docs/verbisept-transfer.md](docs/verbisept-transfer.md) — research/implementation patterns reused from the neighbouring project.
+- [docs/nixos-memory-dreaming.md](docs/nixos-memory-dreaming.md) — deployment, timer, human review, backup, and redaction.
+- [docs/release-v0.1.0.md](docs/release-v0.1.0.md) — preserved release branch/tag and baseline evidence.
+- [docs/development-log.md](docs/development-log.md) — implementation and verification chronology.
+- [docs/verification.md](docs/verification.md) — executed evidence and remaining real-model/Nix/Kimi gates.
 - [docs/operations.md](docs/operations.md) — real Ollama/NixOS operation,
   `ai-agent` deployment, tuning, troubleshooting.
 

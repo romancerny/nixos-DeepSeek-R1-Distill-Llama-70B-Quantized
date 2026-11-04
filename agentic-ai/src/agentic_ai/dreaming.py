@@ -97,7 +97,13 @@ class DreamRunner:
                 if not (run_dir / "transcripts" / "manifest.json").is_file():
                     continue
                 try:
-                    manifest, payload = TranscriptBuilder.load(root, run_dir.name)
+                    manifest = read_json(run_dir / "transcripts" / "manifest.json")
+                    if (
+                        not manifest.get("complete")
+                        or manifest.get("redacted")
+                        or not manifest.get("dream_eligible")
+                    ):
+                        continue
                 except (AgenticError, OSError, json.JSONDecodeError):
                     continue
                 if manifest.get("project_id") != self.config.memory.project_id:
@@ -118,7 +124,7 @@ class DreamRunner:
                         "state_dir": str(root),
                         "run_id": run_dir.name,
                         "manifest": manifest,
-                        "payload": payload,
+                        "payload": None,
                     }
                 )
         candidates.sort(key=lambda item: (item["manifest"]["finalized_at"], item["run_id"]), reverse=True)
@@ -136,6 +142,12 @@ class DreamRunner:
             total_bytes += size
         if not selected:
             raise MemoryNotFoundError("No eligible transcripts matched the dream policy")
+        for candidate in selected:
+            manifest, payload = TranscriptBuilder.load(
+                candidate["state_dir"], candidate["run_id"]
+            )
+            candidate["manifest"] = manifest
+            candidate["payload"] = payload
         classification = PrivacyPolicy.most_sensitive(
             *(item["manifest"]["classification"] for item in selected)
         )
