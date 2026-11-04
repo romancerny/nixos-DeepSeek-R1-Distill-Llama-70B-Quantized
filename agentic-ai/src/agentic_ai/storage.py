@@ -74,14 +74,16 @@ def sha256_file(path: Path) -> str:
 
 
 class FileLock:
-    def __init__(self, path: Path, *, blocking: bool = True):
+    def __init__(self, path: Path, *, blocking: bool = True, mode: int = 0o600):
         self.path = path
         self.blocking = blocking
+        self.mode = mode
         self._handle = None
 
     def __enter__(self) -> "FileLock":
         self.path.parent.mkdir(parents=True, exist_ok=True)
-        descriptor = os.open(self.path, os.O_CREAT | os.O_RDWR, 0o600)
+        descriptor = os.open(self.path, os.O_CREAT | os.O_RDWR, self.mode)
+        os.fchmod(descriptor, self.mode)
         self._handle = os.fdopen(descriptor, "a+")
         flags = fcntl.LOCK_EX | (0 if self.blocking else fcntl.LOCK_NB)
         try:
@@ -135,6 +137,9 @@ class RunStore:
             "run_id": store.run_id,
             "status": "created",
             "goal": brief,
+            "project_id": config.get("memory", {}).get("project_id", "default"),
+            "data_classification": config.get("memory", {}).get("classification", "private"),
+            "dreaming_enabled": config.get("memory", {}).get("dreaming_enabled", False),
             "created_at": now,
             "updated_at": now,
             "plan_revision": 0,

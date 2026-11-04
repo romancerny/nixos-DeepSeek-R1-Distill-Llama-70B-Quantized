@@ -34,6 +34,13 @@ class LlamaCppError(OllamaError):
     """
 
 
+class KimiError(OllamaError):
+    def __init__(self, message: str, *, category: str = "transport", ambiguous: bool = False):
+        super().__init__(message)
+        self.category = category
+        self.ambiguous = ambiguous
+
+
 class ToolError(AgenticError):
     pass
 

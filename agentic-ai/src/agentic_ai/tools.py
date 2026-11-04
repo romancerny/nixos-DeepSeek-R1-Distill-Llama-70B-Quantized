@@ -5,11 +5,19 @@ import json
 import os
 import signal
 import subprocess
+import threading
 from pathlib import Path
 from typing import Any
 
 from .config import Config
-from .errors import PlanValidationError, StorageError, ToolError
+from .errors import (
+    IdentityError,
+    MemoryError,
+    PlanValidationError,
+    StorageError,
+    ToolError,
+)
+from .memory_runtime import MemoryService
 from .plan import Task, safe_relative_path
 from .storage import RunStore, atomic_write_json, atomic_write_text
 from .web import WebRuntime
@@ -21,6 +29,15 @@ class ToolRuntime:
         self.config = config
         self.task = task
         self.web = WebRuntime(config.web)
+        self._memory_service: MemoryService | None = None
+
+    @property
+    def memory(self) -> MemoryService:
+        if not self.config.memory.enabled:
+            raise ToolError("Memory is disabled in this configuration")
+        if self._memory_service is None:
+            self._memory_service = MemoryService(self.store, self.config, self.task)
+        return self._memory_service
 
     @staticmethod
     def _check_arguments(call: dict[str, Any], allowed: set[str]) -> dict[str, Any]:
@@ -35,7 +52,7 @@ class ToolRuntime:
             result = self._execute(call)
             result.setdefault("ok", True)
             return result
-        except (ToolError, StorageError, PlanValidationError, OSError) as exc:
+        except (ToolError, StorageError, PlanValidationError, MemoryError, IdentityError, OSError) as exc:
             return {"ok": False, "tool": call.get("tool"), "error": str(exc)}
 
     def _execute(self, call: dict[str, Any]) -> dict[str, Any]:
@@ -59,6 +76,24 @@ class ToolRuntime:
         if tool == "web_search":
             self._require_role({"researcher"}, tool)
             return self._web_search(call)
+        if tool == "memory_search":
+            self._check_arguments(call, {"query", "scope", "kind", "tags", "limit"})
+            return self.memory.search(call["arguments"])
+        if tool == "memory_read":
+            self._check_arguments(call, {"scope", "namespace", "document_id"})
+            return self.memory.read(call["arguments"])
+        if tool == "memory_write":
+            self._check_arguments(
+                call,
+                {"scope", "namespace", "content", "expected_sha256", "operation"},
+            )
+            return self.memory.write(call["arguments"], call["call_id"])
+        if tool == "skill_search":
+            self._check_arguments(call, {"query"})
+            return self.memory.skill_search(call["arguments"])
+        if tool == "skill_read":
+            self._check_arguments(call, {"skill_id"})
+            return self.memory.skill_read(call["arguments"])
         raise ToolError(f"Unknown tool: {tool}")
 
     def _require_role(self, roles: set[str], tool: str) -> None:
@@ -195,17 +230,35 @@ class ToolRuntime:
             "NO_COLOR": "1",
         }
         timed_out = False
+        total_bytes = 0
+        maximum = self.config.limits.max_command_output_bytes
         with log_path.open("wb") as log:
             process = subprocess.Popen(
                 command.resolved_argv(),
                 cwd=self.store.workspace_dir,
                 env=environment,
                 stdin=subprocess.DEVNULL,
-                stdout=log,
+                stdout=subprocess.PIPE,
                 stderr=subprocess.STDOUT,
                 shell=False,
                 start_new_session=True,
             )
+
+            def drain_output() -> None:
+                nonlocal total_bytes
+                assert process.stdout is not None
+                while True:
+                    chunk = process.stdout.read(65536)
+                    if not chunk:
+                        return
+                    total_bytes += len(chunk)
+                    remaining = max(0, maximum - log.tell())
+                    if remaining:
+                        log.write(chunk[:remaining])
+                        log.flush()
+
+            reader = threading.Thread(target=drain_output, daemon=True)
+            reader.start()
             try:
                 return_code = process.wait(timeout=command.timeout_seconds)
             except subprocess.TimeoutExpired:
@@ -216,6 +269,11 @@ class ToolRuntime:
                 except subprocess.TimeoutExpired:
                     os.killpg(process.pid, signal.SIGKILL)
                     return_code = process.wait()
+            finally:
+                reader.join(timeout=5)
+                process.stdout.close()
+            if total_bytes > maximum:
+                log.write(b"\n[output truncated by agentic-ai byte cap]\n")
         size = log_path.stat().st_size
         with log_path.open("rb") as handle:
             tail_bytes = self.config.limits.max_tool_result_chars * 4
@@ -231,6 +289,8 @@ class ToolRuntime:
             "ok": return_code == 0 and not timed_out,
             "log_path": log_path.relative_to(self.store.run_dir).as_posix(),
             "log_size_bytes": size,
+            "output_bytes_total": total_bytes,
+            "output_truncated": total_bytes > maximum,
             "output_tail": output,
         }
 

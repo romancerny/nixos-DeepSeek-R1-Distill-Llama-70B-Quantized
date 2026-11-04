@@ -4,6 +4,7 @@ import json
 import tempfile
 import unittest
 from pathlib import Path
+from unittest import mock
 
 from agentic_ai.cli import main
 from agentic_ai.config import OllamaConfig
@@ -13,6 +14,15 @@ from test_end_to_end import WorkflowResponder
 
 
 class CliTests(unittest.TestCase):
+    def setUp(self):
+        self.identity = mock.patch(
+            "agentic_ai.identity.current_username", return_value="ai-agent"
+        )
+        self.identity.start()
+
+    def tearDown(self):
+        self.identity.stop()
+
     def test_doctor_run_status_report_and_resume(self):
         with tempfile.TemporaryDirectory() as temporary:
             responder = WorkflowResponder()

@@ -88,9 +88,9 @@ class MemoryIndex:
         clauses = []
         parameters: list[Any] = []
         for token in tokens[:16]:
-            clauses.append("(lower(title) LIKE ? OR lower(summary) LIKE ? OR lower(body) LIKE ? OR lower(tags) LIKE ?)")
+            clauses.append("(lower(document_id) LIKE ? OR lower(title) LIKE ? OR lower(summary) LIKE ? OR lower(body) LIKE ? OR lower(tags) LIKE ?)")
             value = f"%{token}%"
-            parameters.extend([value, value, value, value])
+            parameters.extend([value, value, value, value, value])
         where = " AND ".join(clauses) if clauses else "1 = 1"
         parameters.append(limit)
         rows = self.connection.execute(

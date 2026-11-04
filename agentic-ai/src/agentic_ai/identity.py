@@ -102,8 +102,17 @@ class MemoryPolicy:
                 f"{scope.kind}/{scope.namespace}"
             )
 
+    @staticmethod
+    def _authenticate_writer(actor: Actor) -> None:
+        actual = current_username()
+        if actual != actor.os_user:
+            raise IdentityError(
+                f"Actor {actor.os_user} does not match effective OS user {actual}"
+            )
+
     @classmethod
     def require_write(cls, actor: Actor, scope: MemoryScope) -> None:
+        cls._authenticate_writer(actor)
         if not cls.can_write(actor, scope):
             raise IdentityError(
                 f"{actor.kind} {actor.agent_id or actor.os_user} cannot write "
@@ -112,5 +121,6 @@ class MemoryPolicy:
 
     @staticmethod
     def require_human(actor: Actor, operation: str) -> None:
+        MemoryPolicy._authenticate_writer(actor)
         if actor.kind != "human":
             raise IdentityError(f"{operation} requires the roman human actor")

@@ -34,6 +34,19 @@
     "request_timeout_seconds": 3600,
     "transport_retries": 2
   },
+  "kimi": {
+    "enabled": false,
+    "base_url": "https://api.kimi.ai/coding/v1",
+    "model_name": "k3.1-pro",
+    "api_key_env": "KIMI_API_KEY",
+    "context_length": 262144,
+    "request_timeout_seconds": 600,
+    "transport_retries": 2,
+    "max_response_bytes": 16000000,
+    "offload_local": true,
+    "approved": false,
+    "allow_dreaming": false
+  },
   "commands": {
     "unit_tests": {
       "argv": ["{python}", "-m", "unittest", "discover", "-s", "tests", "-v"],
@@ -52,9 +65,9 @@
     }
   },
   "web": {
-    "enabled": true,
+    "enabled": false,
     "search_url": "https://html.duckduckgo.com/html/?q={query}",
-    "allowed_domains": ["*"],
+    "allowed_domains": [],
     "timeout_seconds": 30,
     "max_bytes": 1000000,
     "max_results": 5
@@ -69,5 +82,32 @@
     "max_tool_result_chars": 12000,
     "max_list_entries": 500,
     "safety_reserve_tokens": 512
+  },
+  "execution": {
+    "lock_path": "~/.agentic-ai/executor.lock",
+    "process_registry_path": "~/.agentic-ai/llamacpp-process.json"
+  },
+  "memory": {
+    "enabled": false,
+    "root": "/var/lib/agentic-ai/memory",
+    "project_id": "default",
+    "classification": "private",
+    "dreaming_enabled": false,
+    "run_roots": [],
+    "transcript_retention_days": 30,
+    "max_guidance_documents": 8,
+    "max_search_results": 8
+  },
+  "dream": {
+    "subject_model": "deepseek-r1-uncensored-v2:70b",
+    "curator_model": "deepseek-r1-uncensored-v2:70b",
+    "allow_hosted": false,
+    "max_transcripts": 8,
+    "max_transcript_bytes": 4000000,
+    "max_shards": 8,
+    "max_findings": 64,
+    "max_proposals": 20,
+    "min_distinct_runs": 2,
+    "steering": "Prefer repeated, evidence-backed lessons that improve reliability, deterministic verification, and the small business's recurring workflows."
   }
 }

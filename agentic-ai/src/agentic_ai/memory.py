@@ -4,6 +4,7 @@ import difflib
 import json
 import os
 import shutil
+import stat
 import uuid
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -72,7 +73,7 @@ class MemoryStore:
 
     @staticmethod
     def _file_mode(actor: Actor) -> int:
-        return 0o640 if actor.kind == "human" else 0o600
+        return 0o640
 
     def initialize(self, actor: Actor) -> list[str]:
         MemoryPolicy.require_human(actor, "Memory initialization")
@@ -83,13 +84,13 @@ class MemoryStore:
             if not catalog_path.exists():
                 self._write_catalog(scope, self._load_catalog(scope), actor)
                 initialized.append(f"{scope.kind}/{scope.namespace}")
-        (self.root / "redactions").mkdir(exist_ok=True, mode=0o700)
-        (self.root / "dreams").mkdir(exist_ok=True, mode=0o700)
+        (self.root / "redactions").mkdir(exist_ok=True, mode=0o750)
+        (self.root / "dreams").mkdir(exist_ok=True, mode=0o750)
         return initialized
 
     @staticmethod
     def _directory_mode(actor: Actor) -> int:
-        return 0o750 if actor.kind == "human" else 0o700
+        return 0o750
 
     def _ensure_scope(self, scope: MemoryScope, actor: Actor) -> Path:
         root = self._scope_root(scope)
@@ -99,7 +100,10 @@ class MemoryStore:
         return root
 
     def _catalog_path(self, scope: MemoryScope) -> Path:
-        return self._scope_root(scope) / "catalog.json"
+        path = self._scope_root(scope) / "catalog.json"
+        if path.is_symlink():
+            raise MemoryError(f"Memory catalog cannot be a symlink: {path}")
+        return path
 
     def _load_catalog(self, scope: MemoryScope) -> dict[str, Any]:
         path = self._catalog_path(scope)
@@ -135,13 +139,19 @@ class MemoryStore:
     def _object_path(self, scope: MemoryScope, sha256: str) -> Path:
         if len(sha256) != 64 or any(character not in "0123456789abcdef" for character in sha256):
             raise MemoryError("Invalid content SHA-256")
-        return self._scope_root(scope) / "objects" / sha256[:2] / f"{sha256}.md"
+        path = self._scope_root(scope) / "objects" / sha256[:2] / f"{sha256}.md"
+        if path.is_symlink():
+            raise MemoryError(f"Memory object cannot be a symlink: {path}")
+        return path
 
     def _version_path(self, scope: MemoryScope, document_id: str, version_id: str) -> Path:
         validate_document_id(document_id)
         if not version_id.startswith("v") or not version_id[1:].isdigit():
             raise MemoryError("Invalid memory version id")
-        return self._scope_root(scope) / "versions" / document_id / f"{version_id}.json"
+        path = self._scope_root(scope) / "versions" / document_id / f"{version_id}.json"
+        if path.is_symlink():
+            raise MemoryError(f"Memory version cannot be a symlink: {path}")
+        return path
 
     def _redaction_path(self, scope: MemoryScope, document_id: str) -> Path:
         return (
@@ -226,7 +236,10 @@ class MemoryStore:
     def _operation_path(self, scope: MemoryScope, mutation_id: str) -> Path:
         if not uuid.UUID(mutation_id):
             raise MemoryError("Invalid mutation id")
-        return self._scope_root(scope) / "operations" / f"{mutation_id}.json"
+        path = self._scope_root(scope) / "operations" / f"{mutation_id}.json"
+        if path.is_symlink():
+            raise MemoryError(f"Memory operation cannot be a symlink: {path}")
+        return path
 
     @staticmethod
     def _operation_snapshot(operation: dict[str, Any]) -> dict[str, Any]:
@@ -248,7 +261,24 @@ class MemoryStore:
     def _checkpoint(self, name: str, operation: dict[str, Any]) -> None:
         """Fault-injection seam used by recovery tests."""
 
-    def _audit_contains(self, scope: MemoryScope, mutation_id: str) -> bool:
+    def _repair_audit(self, scope: MemoryScope, actor: Actor) -> None:
+        path = self._scope_root(scope) / "audit.jsonl"
+        if not path.exists():
+            return
+        lines = path.read_bytes().splitlines(keepends=True)
+        good = []
+        for index, line in enumerate(lines):
+            try:
+                json.loads(line)
+            except json.JSONDecodeError as exc:
+                if index != len(lines) - 1:
+                    raise MemoryError(f"Corrupt memory audit log before final line: {path}") from exc
+                atomic_write_bytes(path, b"".join(good), mode=self._file_mode(actor))
+                return
+            good.append(line if line.endswith(b"\n") else line + b"\n")
+
+    def _audit_contains(self, scope: MemoryScope, mutation_id: str, actor: Actor) -> bool:
+        self._repair_audit(scope, actor)
         path = self._scope_root(scope) / "audit.jsonl"
         if not path.exists():
             return False
@@ -268,7 +298,7 @@ class MemoryStore:
         operation: dict[str, Any],
         actor: Actor,
     ) -> None:
-        if self._audit_contains(scope, operation["mutation_id"]):
+        if self._audit_contains(scope, operation["mutation_id"], actor):
             return
         path = self._scope_root(scope) / "audit.jsonl"
         previous_hash = None
@@ -281,7 +311,7 @@ class MemoryStore:
             "mutation_id": operation["mutation_id"],
             "scope": scope.kind,
             "namespace": scope.namespace,
-            "actor": actor.to_dict(),
+            "actor": operation["actor"],
             "changes": [
                 {
                     "document_id": change["document_id"],
@@ -303,6 +333,45 @@ class MemoryStore:
             handle.write(json.dumps(event, ensure_ascii=False, sort_keys=True) + "\n")
             handle.flush()
             os.fsync(handle.fileno())
+
+    def _reconcile_pending(
+        self, scope: MemoryScope, catalog: dict[str, Any], actor: Actor
+    ) -> None:
+        operations = self._scope_root(scope) / "operations"
+        for path in sorted(operations.glob("*.json")):
+            operation = read_json(path)
+            if operation.get("status") != "pending":
+                continue
+            versions = []
+            applied = True
+            for change in operation["changes"]:
+                current = catalog["documents"].get(change["document_id"])
+                if not current or int(current["version_id"][1:]) < int(change["version_id"][1:]):
+                    applied = False
+                    break
+                if (
+                    current["version_id"] == change["version_id"]
+                    and current.get("sha256") not in {change["sha256"], None}
+                ):
+                    raise MemoryError("Catalog/version conflict during pending recovery")
+                try:
+                    versions.append(
+                        self._read_version_record(
+                            scope, change["document_id"], change["version_id"]
+                        )
+                    )
+                except MemoryNotFoundError:
+                    applied = False
+                    break
+            if not applied:
+                continue
+            self._append_audit(scope, operation, actor)
+            operation["status"] = "committed"
+            operation["committed_at"] = utc_now()
+            operation["versions"] = versions
+            atomic_write_json(
+                path, self._operation_snapshot(operation), mode=self._file_mode(actor)
+            )
 
     def commit(
         self,
@@ -334,17 +403,43 @@ class MemoryStore:
                 raise MemoryConflictError(f"Mutation is {existing['status']}: {mutation_id}")
 
         lock_path = self._scope_root(scope) / "locks" / "catalog.lock"
-        with FileLock(lock_path):
+        with FileLock(lock_path, mode=0o660):
             catalog = self._load_catalog(scope)
+            self._reconcile_pending(scope, catalog, actor)
             if operation_path.exists():
                 operation = read_json(operation_path)
+                if operation.get("request_sha256") != fingerprint:
+                    raise MemoryConflictError(
+                        "Mutation id was already used for a different request"
+                    )
+                if operation.get("status") == "committed":
+                    return list(operation["versions"])
+                if operation.get("status") in {"conflicted", "rejected"}:
+                    raise MemoryConflictError(f"Mutation is {operation['status']}: {mutation_id}")
             else:
                 prepared = []
                 for change in changes:
                     if change.operation not in self.OPERATIONS:
                         raise MemoryError(f"Unknown memory operation: {change.operation}")
+                    if change.operation in {"deleted", "rollback", "imported", "redacted"}:
+                        MemoryPolicy.require_human(actor, f"Memory {change.operation}")
                     document_id = change.document.document_id
+                    if (
+                        change.operation != "redacted"
+                        and self._redaction_path(scope, document_id).exists()
+                    ):
+                        raise MemoryConflictError(
+                            f"Memory is redacted or redaction is pending: {document_id}"
+                        )
+                    if change.operation == "redacted" and not self._redaction_path(
+                        scope, document_id
+                    ).exists():
+                        raise MemoryPermissionError(
+                            "Redacted tombstones require the authenticated redaction workflow"
+                        )
                     current = catalog["documents"].get(document_id)
+                    if current and current.get("redacted") and change.operation != "redacted":
+                        raise MemoryConflictError(f"Memory is redacted: {document_id}")
                     current_hash = current.get("sha256") if current else None
                     if change.operation == "created" and current and not current.get("deleted"):
                         raise MemoryConflictError(f"Memory already exists: {document_id}")
@@ -496,6 +591,8 @@ class MemoryStore:
         entry = catalog["documents"].get(document_id)
         if not entry:
             raise MemoryNotFoundError(f"Memory not found: {scope.kind}/{document_id}")
+        if self._redaction_path(scope, document_id).exists():
+            raise MemoryPermissionError(f"Memory is redacted or redaction is pending: {document_id}")
         if entry.get("redacted"):
             raise MemoryPermissionError(f"Memory has been redacted: {document_id}")
         if entry.get("deleted"):
@@ -507,6 +604,9 @@ class MemoryStore:
         self, scope: MemoryScope, document_id: str, version_id: str, actor: Actor
     ) -> tuple[MemoryDocument, dict[str, Any]]:
         MemoryPolicy.require_read(actor, scope)
+        validate_document_id(document_id)
+        if self._redaction_path(scope, document_id).exists():
+            raise MemoryPermissionError(f"Memory is redacted or redaction is pending: {document_id}")
         record = self._read_version_record(scope, document_id, version_id)
         if record.get("payload_redacted"):
             raise MemoryPermissionError(f"Memory version has been redacted: {version_id}")
@@ -516,6 +616,7 @@ class MemoryStore:
         self, scope: MemoryScope, document_id: str, actor: Actor
     ) -> list[dict[str, Any]]:
         MemoryPolicy.require_read(actor, scope)
+        validate_document_id(document_id)
         directory = self._scope_root(scope) / "versions" / document_id
         if not directory.exists():
             return []
@@ -597,46 +698,63 @@ class MemoryStore:
         reason: str,
     ) -> dict[str, Any]:
         MemoryPolicy.require_human(actor, "Memory redaction")
-        document, current = self.read(scope, document_id, actor)
-        marker_id = str(uuid.uuid4())
-        marker = {
-            "schema_version": 1,
-            "redaction_id": marker_id,
-            "scope": scope.kind,
-            "namespace": scope.namespace,
-            "document_id": document_id,
-            "created_at": utc_now(),
-            "actor": actor.to_dict(),
-            "reason": reason,
-        }
+        validate_document_id(document_id)
         marker_path = self._redaction_path(scope, document_id)
-        atomic_write_json(marker_path, marker, mode=0o600)
-        tombstone = MemoryDocument(metadata=dict(document.metadata), body="")
-        result = self.put(
-            scope,
-            tombstone,
-            actor,
-            expected_sha256=current["sha256"],
-            operation="redacted",
-            provenance={"redaction_id": marker_id, "reason": reason},
-        )
-        affected_hashes = set()
-        for path in sorted((self._scope_root(scope) / "versions" / document_id).glob("v*.json")):
-            record = read_json(path)
-            affected_hashes.add(record["sha256"])
-            record["payload_redacted"] = True
-            record["redaction_id"] = marker_id
-            atomic_write_json(path, record, mode=self._file_mode(actor))
-        with FileLock(self._scope_root(scope) / "locks" / "catalog.lock"):
+        catalog = self._load_catalog(scope)
+        entry = catalog["documents"].get(document_id)
+        if not entry:
+            raise MemoryNotFoundError(f"Memory not found: {document_id}")
+        if marker_path.exists():
+            marker = read_json(marker_path)
+        else:
+            document = self._read_object(scope, entry["sha256"])
+            marker = {
+                "schema_version": 1,
+                "redaction_id": str(uuid.uuid4()),
+                "scope": scope.kind,
+                "namespace": scope.namespace,
+                "document_id": document_id,
+                "created_at": utc_now(),
+                "actor": actor.to_dict(),
+                "reason": reason,
+            }
+            marker_path.parent.mkdir(parents=True, exist_ok=True, mode=0o750)
+            atomic_write_json(marker_path, marker, mode=0o640)
+        if not entry.get("redacted"):
+            document = self._read_object(scope, entry["sha256"])
+            tombstone = MemoryDocument(metadata=dict(document.metadata), body="")
+            self.put(
+                scope,
+                tombstone,
+                actor,
+                expected_sha256=entry["sha256"],
+                operation="redacted",
+                provenance={"redaction_id": marker["redaction_id"], "reason": reason},
+            )
+        # Once the marker exists, readers fail closed even if cleanup is
+        # interrupted. The same catalog lock blocks resurrection and deletion
+        # races while version metadata and payloads are reconciled.
+        with FileLock(self._scope_root(scope) / "locks" / "catalog.lock", mode=0o660):
             catalog = self._load_catalog(scope)
             entry = catalog["documents"][document_id]
+            affected_hashes = set()
+            for path in sorted((self._scope_root(scope) / "versions" / document_id).glob("v*.json")):
+                record = read_json(path)
+                affected_hashes.add(record["sha256"])
+                record["payload_redacted"] = True
+                record["redaction_id"] = marker["redaction_id"]
+                atomic_write_json(path, record, mode=self._file_mode(actor))
             entry["redacted"] = True
             entry["deleted"] = True
             entry["sha256"] = None
             self._write_catalog(scope, catalog, actor)
-        referenced = self._unredacted_references()
-        for digest in affected_hashes - referenced:
-            self._object_path(scope, digest).unlink(missing_ok=True)
+            referenced = set()
+            for path in (self._scope_root(scope) / "versions").glob("*/*.json"):
+                record = read_json(path)
+                if not record.get("payload_redacted") and record.get("sha256"):
+                    referenced.add(record["sha256"])
+            for digest in affected_hashes - referenced:
+                self._object_path(scope, digest).unlink(missing_ok=True)
         return marker
 
     def _discover_scopes(self) -> list[MemoryScope]:
@@ -656,16 +774,6 @@ class MemoryStore:
                 if (agent / "scratch" / "catalog.json").is_file():
                     result.append(MemoryScope("scratch", agent.name))
         return result
-
-    def _unredacted_references(self) -> set[str]:
-        references = set()
-        for scope in self._discover_scopes():
-            versions = self._scope_root(scope) / "versions"
-            for path in versions.glob("*/*.json"):
-                record = read_json(path)
-                if not record.get("payload_redacted") and record.get("sha256"):
-                    references.add(record["sha256"])
-        return references
 
     def _sync_index(
         self, index: MemoryIndex, scope: MemoryScope, catalog: dict[str, Any]
@@ -712,7 +820,10 @@ class MemoryStore:
         scopes = [scope] if scope else self._discover_scopes()
         allowed = []
         for candidate in scopes:
-            MemoryPolicy.require_read(actor, candidate)
+            if scope is not None:
+                MemoryPolicy.require_read(actor, candidate)
+            elif not MemoryPolicy.can_read(actor, candidate):
+                continue
             catalog = self._load_catalog(candidate)
             self._sync_index(self._index, candidate, catalog)
             allowed.append(candidate)
@@ -767,7 +878,9 @@ class MemoryStore:
     def export(self, actor: Actor, destination: str | Path) -> dict[str, Any]:
         MemoryPolicy.require_human(actor, "Memory export")
         target = Path(destination).expanduser()
-        if target.exists() and (target.is_symlink() or any(target.iterdir())):
+        if target.exists() and (
+            target.is_symlink() or not target.is_dir() or any(target.iterdir())
+        ):
             raise MemoryError("Export destination must be absent or empty")
         staging = target.with_name(f".{target.name}.staging-{uuid.uuid4().hex}")
         staging.mkdir(parents=True, mode=0o700)
@@ -805,6 +918,35 @@ class MemoryStore:
             raise
         return manifest
 
+    @staticmethod
+    def _read_import_entry(root: Path, relative: Path) -> bytes:
+        flags = os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0)
+        directory_flags = flags | getattr(os, "O_DIRECTORY", 0)
+        descriptor = os.open(root, directory_flags)
+        try:
+            for part in relative.parts[:-1]:
+                next_descriptor = os.open(part, directory_flags, dir_fd=descriptor)
+                os.close(descriptor)
+                descriptor = next_descriptor
+            file_descriptor = os.open(relative.name, flags, dir_fd=descriptor)
+            try:
+                info = os.fstat(file_descriptor)
+                if not stat.S_ISREG(info.st_mode) or info.st_size > 100_000:
+                    raise MemoryError("Import entries must be bounded regular files")
+                chunks = []
+                remaining = 100_001
+                while remaining:
+                    chunk = os.read(file_descriptor, min(65536, remaining))
+                    if not chunk:
+                        break
+                    chunks.append(chunk)
+                    remaining -= len(chunk)
+                return b"".join(chunks)
+            finally:
+                os.close(file_descriptor)
+        finally:
+            os.close(descriptor)
+
     def import_(
         self,
         actor: Actor,
@@ -813,8 +955,16 @@ class MemoryStore:
         expected: dict[str, str | None] | None = None,
     ) -> list[dict[str, Any]]:
         MemoryPolicy.require_human(actor, "Memory import")
-        root = Path(source).expanduser().resolve()
-        manifest = read_json(root / "manifest.json")
+        supplied = Path(source).expanduser()
+        if supplied.is_symlink():
+            raise MemoryError("Import root cannot be a symlink")
+        root = supplied.resolve()
+        manifest_bytes = self._read_import_entry(root, Path("manifest.json"))
+        try:
+            manifest = json.loads(manifest_bytes)
+        except json.JSONDecodeError as exc:
+            raise MemoryError("Invalid import manifest JSON") from exc
+        manifest_sha256 = sha256_bytes(manifest_bytes)
         documents = manifest.get("documents", [])
         if not isinstance(documents, list) or len(documents) > 10_000:
             raise MemoryError("Invalid or excessive import manifest")
@@ -824,10 +974,7 @@ class MemoryStore:
             relative = Path(item["path"])
             if relative.is_absolute() or ".." in relative.parts or "." in relative.parts:
                 raise MemoryError("Unsafe import path")
-            path = root / relative
-            if path.is_symlink() or not path.is_file():
-                raise MemoryError("Import entries must be regular files")
-            data = path.read_bytes()
+            data = self._read_import_entry(root, relative)
             if sha256_bytes(data) != item["sha256"]:
                 raise MemoryError(f"Import hash mismatch: {relative}")
             document = MemoryDocument.from_bytes(data)
@@ -838,7 +985,11 @@ class MemoryStore:
             key = f"{scope.kind}/{scope.namespace}/{document.document_id}"
             current = self._load_catalog(scope)["documents"].get(document.document_id)
             current_hash = current.get("sha256") if current else None
-            required = expected.get(key, current_hash)
+            if current is not None and key not in expected:
+                raise MemoryConflictError(
+                    f"Import requires an explicit expected hash for existing memory: {key}"
+                )
+            required = expected.get(key)
             if required != current_hash:
                 raise MemoryConflictError(f"Import would overwrite a newer head: {key}")
             grouped.setdefault(scope, []).append(
@@ -851,14 +1002,15 @@ class MemoryStore:
             )
         versions = []
         for scope, changes in grouped.items():
-            versions.extend(
-                self.commit(
-                    scope,
-                    changes,
-                    actor,
-                    provenance={"source_manifest_sha256": sha256_file(root / "manifest.json")},
+            for start in range(0, len(changes), 100):
+                versions.extend(
+                    self.commit(
+                        scope,
+                        changes[start : start + 100],
+                        actor,
+                        provenance={"source_manifest_sha256": manifest_sha256},
+                    )
                 )
-            )
         return versions
 
 

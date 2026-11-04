@@ -11,7 +11,7 @@ from .storage import RunStore, atomic_write_json, utc_now
 
 
 class ResidencyManager:
-    """Enforces one verified resident model at quiescent scheduling barriers."""
+    """Enforces one locally resident model; hosted calls occupy no GPU slot."""
 
     def __init__(
         self,
@@ -27,6 +27,9 @@ class ResidencyManager:
         self.poll_interval = poll_interval
         self.active_model: str | None = None
         self.owned_models = {role.model for role in config.roles.values()}
+
+    def _hosted(self, model: str) -> bool:
+        return self.config.backend_for_model(model) == "kimi"
 
     def _names(self) -> list[str]:
         return self.client.model_names()
@@ -71,6 +74,98 @@ class ResidencyManager:
                 + ", ".join(unexpected)
             )
 
+    def _record_switch(
+        self,
+        *,
+        model: str,
+        assignments: list[dict[str, Any]],
+        required_models: list[str],
+        wave_id: int,
+        reason: str,
+        from_model: str | None,
+        before_snapshot: dict[str, Any],
+        after_snapshot: dict[str, Any],
+        unload_checks: list[dict[str, Any]],
+        hosted: bool = False,
+    ) -> dict[str, Any]:
+        after = self.client.model_names(after_snapshot)
+        run = self.store.load_run()
+        switch_id = int(run.get("current_switch", 0)) + 1
+        record = {
+            "schema_version": 1,
+            "switch_id": switch_id,
+            "timestamp": utc_now(),
+            "reason": reason,
+            "quiescent_wave_id": wave_id,
+            "from_model": from_model,
+            "to_model": model,
+            "active_model": model,
+            "required_models": sorted(set(required_models)),
+            "required_model_count": len(set(required_models)),
+            "resident_model_limit": 1,
+            "assignments": assignments,
+            "before_ps": before_snapshot,
+            "after_ps": after_snapshot,
+            "unload_verification": unload_checks,
+            "load_verification": {
+                "model": model,
+                "provider": "kimi" if hosted else "local",
+                "hosted": hosted,
+                "verified": True,
+            },
+        }
+        atomic_write_json(self.store.switch_path(switch_id), record)
+
+        def mutate(current_run: dict[str, Any]) -> None:
+            current_run["current_switch"] = switch_id
+            metrics = current_run.setdefault("metrics", {})
+            metrics["model_switches"] = metrics.get("model_switches", 0) + 1
+
+        self.store.update_run(mutate)
+        self.store.append_event(
+            "model_switch_verified",
+            switch_id=switch_id,
+            from_model=from_model,
+            to_model=model,
+            assignments=assignments,
+        )
+        return record
+
+    def _activate_hosted(
+        self,
+        model: str,
+        *,
+        assignments: list[dict[str, Any]],
+        required_models: list[str],
+        wave_id: int,
+        reason: str,
+    ) -> dict[str, Any] | None:
+        before_snapshot = self.client.ps()
+        before = self.client.model_names(before_snapshot)
+        if self.active_model == model and (not self.config.kimi.offload_local or not before):
+            return None
+        self._check_external_models(before, "")
+        from_model = self.active_model or (before[0] if len(before) == 1 else None)
+        unload_checks = []
+        if self.config.kimi.offload_local:
+            for resident in before:
+                remaining = self._unload(resident)
+                unload_checks.append({"model": resident, "resident_models": remaining})
+        self.active_model = model
+        after_snapshot = self.client.ps()
+        return self._record_switch(
+            model=model,
+            assignments=assignments,
+            required_models=required_models,
+            wave_id=wave_id,
+            reason=reason,
+            from_model=from_model,
+            before_snapshot=before_snapshot,
+            after_snapshot=after_snapshot,
+            unload_checks=unload_checks,
+            hosted=True,
+        )
+
     def activate(
         self,
         model: str,
@@ -80,7 +175,15 @@ class ResidencyManager:
         wave_id: int,
         reason: str,
     ) -> dict[str, Any] | None:
-        """Switch at a quiescent barrier; return None when already exclusively loaded."""
+        """Switch at a quiescent barrier; return None when already active."""
+        if self._hosted(model):
+            return self._activate_hosted(
+                model,
+                assignments=assignments,
+                required_models=required_models,
+                wave_id=wave_id,
+                reason=reason,
+            )
         before_snapshot = self.client.ps()
         before = self.client.model_names(before_snapshot)
         if self.active_model == model and before == [model]:
@@ -117,48 +220,30 @@ class ResidencyManager:
             self.store.append_event("model_reloaded", model=model, wave_id=wave_id)
             return None
 
-        run = self.store.load_run()
-        switch_id = int(run.get("current_switch", 0)) + 1
-        record = {
-            "schema_version": 1,
-            "switch_id": switch_id,
-            "timestamp": utc_now(),
-            "reason": reason,
-            "quiescent_wave_id": wave_id,
-            "from_model": from_model,
-            "to_model": model,
-            "active_model": model,
-            "required_models": sorted(set(required_models)),
-            "required_model_count": len(set(required_models)),
-            "resident_model_limit": 1,
-            "assignments": assignments,
-            "before_ps": before_snapshot,
-            "after_ps": after_snapshot,
-            "unload_verification": unload_checks,
-            "load_verification": {"model": model, "resident_models": after, "verified": True},
-        }
-        atomic_write_json(self.store.switch_path(switch_id), record)
-
-        def mutate(current_run: dict[str, Any]) -> None:
-            current_run["current_switch"] = switch_id
-            metrics = current_run.setdefault("metrics", {})
-            metrics["model_switches"] = metrics.get("model_switches", 0) + 1
-
-        self.store.update_run(mutate)
-        self.store.append_event(
-            "model_switch_verified",
-            switch_id=switch_id,
-            from_model=from_model,
-            to_model=model,
+        return self._record_switch(
+            model=model,
             assignments=assignments,
+            required_models=required_models,
+            wave_id=wave_id,
+            reason=reason,
+            from_model=from_model,
+            before_snapshot=before_snapshot,
+            after_snapshot=after_snapshot,
+            unload_checks=unload_checks,
         )
-        return record
 
     def ensure_for_inference(self, model: str) -> None:
         if self.active_model != model:
             raise ResidencyError(
                 f"Agent requested {model}, but the quiescent wave activated {self.active_model}"
             )
+        if self._hosted(model):
+            names = self._names()
+            if self.config.kimi.offload_local and names:
+                raise ResidencyError(
+                    f"Local models must be absent during hosted inference, found {names}"
+                )
+            return
         names = self._names()
         if names == [model]:
             return
@@ -174,7 +259,11 @@ class ResidencyManager:
         self.ensure_for_inference(model)
         result = self.client.chat(model, messages, role, **kwargs)
         names = self._names()
-        if names != [model]:
+        if self._hosted(model):
+            if self.config.kimi.offload_local and names:
+                raise ResidencyError(f"Local models reappeared during hosted inference: {names}")
+            self._increment_metric("hosted_calls")
+        elif names != [model]:
             raise ResidencyError(f"Model residency was not exclusive after inference: {names}")
         self._increment_metric("model_calls")
         if result.prompt_eval_count:

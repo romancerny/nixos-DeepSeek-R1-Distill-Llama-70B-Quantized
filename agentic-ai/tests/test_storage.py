@@ -49,6 +49,16 @@ class StorageTests(unittest.TestCase):
                 with FileLock(self.store.executor_lock_path, blocking=False):
                     pass
 
+    def test_configured_global_lock_spans_project_state_directories(self):
+        shared = self.state / "runtime" / "executor.lock"
+        first = RunStore(self.state / "project-a", "run-a")
+        second = RunStore(self.state / "project-b", "run-b")
+        self.assertNotEqual(first.state_dir, second.state_dir)
+        with FileLock(shared):
+            with self.assertRaises(StorageError):
+                with FileLock(shared, blocking=False):
+                    pass
+
     def test_repair_only_truncated_final_event(self):
         self.store.events_path.write_text('{"valid": 1}\n{"broken":', encoding="utf-8")
         self.assertTrue(self.store.repair_event_log())

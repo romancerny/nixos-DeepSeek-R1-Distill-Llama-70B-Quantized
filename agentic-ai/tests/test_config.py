@@ -21,7 +21,10 @@ class ConfigurationTests(unittest.TestCase):
         self.assertEqual(config.llamacpp.cache_type_k, "q8_0")
         self.assertEqual(config.llamacpp.cache_type_v, "q8_0")
         self.assertIn("compileall", config.commands["compile_all"].resolved_argv())
-        self.assertTrue(config.web.enabled)
+        self.assertFalse(config.web.enabled)
+        self.assertEqual(config.web.allowed_domains, ())
+        self.assertFalse(config.kimi.enabled)
+        self.assertFalse(config.memory.enabled)
 
     def test_default_config_round_trip(self):
         original = Config.default()

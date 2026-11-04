@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import signal
 import traceback
+from pathlib import Path
 from typing import Any
 
 from .agent import AgentRuntime
@@ -19,10 +20,12 @@ from .evaluation import Evaluator
 from .ollama import OllamaClient
 from .plan import Plan, Task
 from .planner import Planner
+from .privacy import PrivacyPolicy
 from .reporting import generate_report
 from .residency import ResidencyManager
 from .scheduler import Scheduler
-from .storage import RunStore, atomic_write_json, read_json, utc_now
+from .storage import FileLock, RunStore, atomic_write_json, read_json, utc_now
+from .transcripts import TranscriptBuilder
 
 
 class ProjectRunner:
@@ -33,6 +36,7 @@ class ProjectRunner:
         *,
         client: OllamaClient | ModelBackends | None = None,
         poll_interval: float = 0.2,
+        approve_hosted: bool = False,
     ):
         self.store = store
         self.config = config
@@ -46,7 +50,10 @@ class ProjectRunner:
         self.residency = ResidencyManager(
             self.client, store, config, poll_interval=poll_interval
         )
-        self.agent = AgentRuntime(store, config, self.residency)
+        self.agent = AgentRuntime(
+            store, config, self.residency, approve_hosted=approve_hosted
+        )
+        self.approve_hosted = approve_hosted
         self.planner = Planner(store, config, self.residency)
         self.scheduler = Scheduler(
             store, config, self.residency, self.agent, stop_check=self._check_stop
@@ -99,6 +106,12 @@ class ProjectRunner:
         self.store.save_run(run)
         calls_before = run.get("metrics", {}).get("model_calls", 0)
         try:
+            PrivacyPolicy.require_inference(
+                self.config,
+                model,
+                self.config.memory.classification,
+                approved=self.approve_hosted,
+            )
             self.residency.activate(
                 model,
                 assignments=assignments,
@@ -311,7 +324,8 @@ class ProjectRunner:
             plan = self._reflect(plan, evaluation, review, cycle)
 
     def execute(self, *, stop_after_plan: bool = False) -> dict[str, Any]:
-        with self.store.executor_lock(), self.store.run_lock():
+        lock_path = Path(self.config.execution.lock_path).expanduser()
+        with FileLock(lock_path), self.store.run_lock():
             run = self.store.load_run()
             if run["status"] in {"succeeded", "failed"}:
                 return run
@@ -367,4 +381,8 @@ class ProjectRunner:
                     else:
                         self.store.append_event("final_offload_failed", error=str(exc))
                 self._restore_handlers()
+                try:
+                    TranscriptBuilder(self.config).finalize(self.store)
+                except Exception as exc:
+                    self.store.append_event("transcript_finalization_failed", error=str(exc))
                 generate_report(self.store)

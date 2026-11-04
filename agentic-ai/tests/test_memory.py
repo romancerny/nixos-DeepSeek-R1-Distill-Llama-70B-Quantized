@@ -46,7 +46,8 @@ def document(doc_id: str = "lesson", body: str = "Use deterministic checks.", **
 def concurrent_update(root: str, body: str, expected: str, queue) -> None:
     try:
         store = MemoryStore(root)
-        result = store.put(
+        with mock.patch("agentic_ai.identity.current_username", return_value="ai-agent"):
+            result = store.put(
             SCRATCH,
             document(body=body, review_status="unreviewed"),
             AGENT,
@@ -145,22 +146,23 @@ class MemoryStoreTests(unittest.TestCase):
     def test_scope_permissions_low_trust_inbox_and_skills(self):
         with self.assertRaises(IdentityError):
             self.store.put(ORG, document(), AGENT, operation="created")
-        self.store.put(
-            INBOX,
-            document(body="A model claims this is approved."),
-            AGENT,
-            operation="created",
-        )
+        with mock.patch("agentic_ai.identity.current_username", return_value="ai-agent"):
+            self.store.put(
+                INBOX,
+                document(body="A model claims this is approved."),
+                AGENT,
+                operation="created",
+            )
+            self.store.put(
+                SCRATCH,
+                document(body="Private working note", review_status="unreviewed"),
+                AGENT,
+                operation="created",
+            )
         _, record = self.store.read(INBOX, "lesson", AGENT)
         self.assertEqual(record["actor"]["agent_id"], "agent-a")
         stored, _ = self.store.read(INBOX, "lesson", HUMAN)
         self.assertEqual(stored.metadata["review_status"], "unreviewed")
-        self.store.put(
-            SCRATCH,
-            document(body="Private working note", review_status="unreviewed"),
-            AGENT,
-            operation="created",
-        )
         with self.assertRaises(IdentityError):
             self.store.read(SCRATCH, "lesson", OTHER_AGENT)
 
@@ -235,7 +237,8 @@ class MemoryStoreTests(unittest.TestCase):
         self.assertEqual(self.store.verify(), [])
 
     def test_concurrent_writers_have_exactly_one_winner(self):
-        created = self.store.put(
+        with mock.patch("agentic_ai.identity.current_username", return_value="ai-agent"):
+            created = self.store.put(
             SCRATCH,
             document(review_status="unreviewed"),
             AGENT,

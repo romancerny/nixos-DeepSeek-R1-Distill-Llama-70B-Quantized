@@ -27,10 +27,18 @@ from typing import Any, Callable, Iterator
 from .config import LlamaCppConfig, RoleConfig
 from .errors import LlamaCppError
 from .ollama import GenerationResult
+from .process_registry import ExistingProcess, ProcessRegistry
 
 
 class LlamaCppBackend:
-    def __init__(self, config: LlamaCppConfig, *, process_factory=None, log_dir: Path | None = None):
+    def __init__(
+        self,
+        config: LlamaCppConfig,
+        *,
+        process_factory=None,
+        log_dir: Path | None = None,
+        process_registry: ProcessRegistry | None = None,
+    ):
         self.config = config
         self.base_url = f"http://{config.host}:{config.port}"
         self._inference_lock = threading.Lock()
@@ -39,6 +47,15 @@ class LlamaCppBackend:
         self._log_dir = log_dir
         # Test hook: returns a Popen-like object instead of spawning a server.
         self._process_factory = process_factory
+        self._process_registry = process_registry
+        self._adopted_model: str | None = None
+        if process_registry is not None:
+            record = process_registry.load_valid()
+            if record is not None:
+                self._process = ExistingProcess(
+                    record["pid"], f"{record['uid']}:{record['start_ticks']}"
+                )
+                self._adopted_model = record["model_name"]
 
     # ------------------------------------------------------------------ #
     # Process lifecycle (load/unload/ps)
@@ -91,8 +108,8 @@ class LlamaCppBackend:
         return {
             "models": [
                 {
-                    "name": self.config.model_name,
-                    "model": self.config.model_name,
+                    "name": self._adopted_model or self.config.model_name,
+                    "model": self._adopted_model or self.config.model_name,
                     "backend": "llamacpp",
                 }
             ]
@@ -134,6 +151,10 @@ class LlamaCppBackend:
             raise LlamaCppError(f"llama.cpp backend does not serve model {model}")
         with self._process_lock:
             if self._process is not None and self._process.poll() is None:
+                if self._adopted_model and self._adopted_model != model:
+                    raise LlamaCppError(
+                        f"Another managed model is already resident: {self._adopted_model}"
+                    )
                 return {"model": model, "done": True}
             model_path = self.resolved_model_path()
             if not model_path.is_file():
@@ -148,20 +169,32 @@ class LlamaCppBackend:
                     f"llama.cpp server binary not found: {self.config.server_binary}"
                 )
             argv = self.server_argv()
+            self._adopted_model = None
             log_dir = self._log_dir or (Path.home() / ".cache" / "agentic-ai")
             log_dir.mkdir(parents=True, exist_ok=True)
             log_path = log_dir / "llama-server.log"
             log_file = log_path.open("ab")
             try:
                 self._process = self._spawn(argv, log_file)
-            except OSError as exc:
+                if self._process_registry is not None:
+                    self._process_registry.capture(self._process, argv, model)
+            except Exception as exc:
+                if self._process is not None:
+                    self._terminate(self._process)
+                    self._process = None
+                if self._process_registry is not None:
+                    self._process_registry.clear()
                 log_file.close()
+                if isinstance(exc, LlamaCppError):
+                    raise
                 raise LlamaCppError(f"Cannot start llama-server: {exc}") from exc
             process = self._process
         try:
             self._wait_healthy(process, log_path)
         except Exception:
             self._terminate(process)
+            if self._process_registry is not None:
+                self._process_registry.clear()
             with self._process_lock:
                 if self._process is process:
                     self._process = None
@@ -189,6 +222,9 @@ class LlamaCppBackend:
             self._process = None
         if process is not None and process.poll() is None:
             self._terminate(process)
+        self._adopted_model = None
+        if self._process_registry is not None:
+            self._process_registry.clear()
         return {"model": model, "done": True}
 
     # ------------------------------------------------------------------ #

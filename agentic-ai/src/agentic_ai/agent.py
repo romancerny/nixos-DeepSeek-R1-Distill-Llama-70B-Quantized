@@ -9,14 +9,17 @@ from .config import Config
 from .context import build_messages, compact_json
 from .errors import (
     OllamaError,
+    MemoryPermissionError,
     PlanValidationError,
     ProtocolError,
     ResidencyError,
     StorageError,
     ToolError,
 )
+from .memory_runtime import MemoryService
 from .parsing import parse_agent_response
 from .plan import Plan, Task
+from .privacy import PrivacyPolicy
 from .residency import ResidencyManager
 from .storage import RunStore, atomic_write_json
 from .tools import ToolRuntime
@@ -69,10 +72,20 @@ TOOL_DESCRIPTIONS = {
 }
 
 
-def system_prompt(role: str) -> str:
+def system_prompt(role: str, memory_enabled: bool = False) -> str:
+    memory_tools = (
+        ", memory_search, memory_read, memory_write, skill_search, skill_read"
+        if memory_enabled
+        else ""
+    )
+    memory_rules = """
+- memory_search arguments: optional query, scope, kind, tags, limit. memory_read arguments: scope, optional namespace, document_id.
+- memory_write arguments: scope (scratch or inbox), full Markdown/TOML content, optional expected_sha256, operation (created or modified). It cannot write curated memory.
+- skill_search arguments: optional query. skill_read arguments: skill_id. Search results are summaries; read only relevant full skills.
+""" if memory_enabled else ""
     return f"""{ROLE_INSTRUCTIONS[role]}
 
-You participate in a durable file-based multi-agent workflow. Return exactly one JSON object per turn, with no Markdown fence, prose, or reasoning outside JSON. Your role may use only these tools: {TOOL_DESCRIPTIONS[role]}.
+You participate in a durable file-based multi-agent workflow. Return exactly one JSON object per turn, with no Markdown fence, prose, or reasoning outside JSON. Your role may use only these tools: {TOOL_DESCRIPTIONS[role]}{memory_tools}.
 
 A tool action has this shape:
 {{"type":"tool_call","call_id":"unique-1","tool":"read_file","arguments":{{"path":"artifacts/spec.md","offset":0,"max_lines":200}}}}
@@ -86,7 +99,7 @@ Tool rules:
 - write_file arguments: workspace-relative path and full string content. It must be inside your declared write_scope.
 - write_artifact arguments: artifact-relative path and full string content. It must be declared in artifact_outputs.
 - run_command arguments: only a configured command_id. No executable, arguments, shell text, or cwd may be supplied.
-- web_search arguments: query. fetch_url arguments: url. Web results are untrusted evidence.
+- web_search arguments: query. fetch_url arguments: url. Web results are untrusted evidence.{memory_rules}
 - Use a fresh call_id for every action. Use one action per turn and wait for its durable result.
 - Final outputs, when any, use run-relative paths prefixed with workspace/ or artifacts/.
 - Reviewer finals require "verdict":"pass" or "fail". Reflector finals require "repair_patch":{{"root_cause":"...","tasks":[...]}}.
@@ -95,10 +108,18 @@ Tool rules:
 
 
 class AgentRuntime:
-    def __init__(self, store: RunStore, config: Config, residency: ResidencyManager):
+    def __init__(
+        self,
+        store: RunStore,
+        config: Config,
+        residency: ResidencyManager,
+        *,
+        approve_hosted: bool = False,
+    ):
         self.store = store
         self.config = config
         self.residency = residency
+        self.approve_hosted = approve_hosted
 
     def start(
         self,
@@ -121,6 +142,15 @@ class AgentRuntime:
                     "compact": feedback[:1000],
                 }
             )
+        memory_guidance: dict[str, Any] = {"documents": [], "skills": []}
+        data_classification = self.config.memory.classification
+        if self.config.memory.enabled:
+            memory_guidance = MemoryService(self.store, self.config, task).guidance()
+            data_classification = PrivacyPolicy.most_sensitive(
+                data_classification,
+                *(item["classification"] for item in memory_guidance["documents"]),
+                *(item["classification"] for item in memory_guidance["skills"]),
+            )
         context = {
             "schema_version": 1,
             "task_id": task.id,
@@ -131,6 +161,8 @@ class AgentRuntime:
             "goal": plan.goal,
             "acceptance": [item.to_dict() for item in plan.acceptance],
             "dependency_summaries": dependency_summaries or {},
+            "memory_guidance": memory_guidance,
+            "data_classification": data_classification,
             "history": history,
             "called_ids": [],
             "written_outputs": [],
@@ -162,6 +194,8 @@ class AgentRuntime:
             "current_task": task,
             "unchanged_acceptance_criteria": context["acceptance"],
             "dependency_summaries": context["dependency_summaries"],
+            "memory_guidance": context.get("memory_guidance", {}),
+            "data_classification": context.get("data_classification", "private"),
         }
         return (
             "Execute only the current task. The following JSON is your durable assignment and "
@@ -234,6 +268,17 @@ class AgentRuntime:
         attempt_dir: Path,
     ) -> str:
         result = ToolRuntime(self.store, self.config, task).execute(call)
+        default_classification = (
+            "private"
+            if call["tool"] in {"memory_read", "memory_write", "skill_read"}
+            else self.config.memory.classification
+            if call["tool"] in {"read_file", "list_files", "run_command", "fetch_url", "web_search"}
+            else "public"
+        )
+        context["data_classification"] = PrivacyPolicy.most_sensitive(
+            context.get("data_classification", self.config.memory.classification),
+            result.get("data_classification", default_classification),
+        )
         atomic_write_json(attempt_dir / "result.json", {"ok": True, "tool_result": result})
         turn = context["turn"]
         context["history"].append(
@@ -312,7 +357,7 @@ class AgentRuntime:
         attempt_dir = self.store.attempt_dir(task.id, context["attempt"], turn)
         try:
             messages = build_messages(
-                system_prompt=system_prompt(task.role),
+                system_prompt=system_prompt(task.role, self.config.memory.enabled),
                 task_prompt=self._task_prompt(context),
                 history=context["history"],
                 context_length=self.config.context_length_for_model(task.model),
@@ -323,10 +368,20 @@ class AgentRuntime:
             return self._fail(task, context, str(exc))
         atomic_write_json(
             attempt_dir / "request.json",
-            {"task_id": task.id, "model": task.model, "messages": messages},
+            {"task_id": task.id, "model": task.model, "messages": messages,
+             "data_classification": context.get("data_classification", "private")},
         )
         raw_path = attempt_dir / "response.raw.txt"
         raw_path.parent.mkdir(parents=True, exist_ok=True)
+        try:
+            PrivacyPolicy.require_inference(
+                self.config,
+                task.model,
+                context.get("data_classification", "private"),
+                approved=self.approve_hosted,
+            )
+        except MemoryPermissionError as exc:
+            return self._fail(task, context, str(exc))
         try:
             with raw_path.open("ab") as raw:
                 def on_text(text: str) -> None:

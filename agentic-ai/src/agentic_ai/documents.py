@@ -81,7 +81,7 @@ class MemoryDocument:
             raise MemoryError("Memory body must be text")
         if len(self.to_bytes()) > MAX_DOCUMENT_BYTES:
             raise MemoryError(f"Memory exceeds {MAX_DOCUMENT_BYTES} bytes")
-        reject_secrets(self.body)
+        reject_secrets(self.to_bytes().decode("utf-8"))
 
     @property
     def document_id(self) -> str:

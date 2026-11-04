@@ -1,10 +1,4 @@
-"""Per-model routing across inference backends (Ollama and llama.cpp).
-
-ModelBackends presents the OllamaClient-shaped surface that the residency
-manager, CLI doctor/offload, and runner expect, and dispatches each call to
-the backend that serves the requested model. Combined ps()/tags() snapshots
-keep the one-resident-model invariant verifiable across both backends.
-"""
+"""Per-model routing across local and hosted inference providers."""
 
 from __future__ import annotations
 
@@ -12,8 +6,10 @@ from typing import Any, Callable
 
 from .config import Config, RoleConfig
 from .errors import OllamaError
+from .kimi import KimiClient
 from .llamacpp import LlamaCppBackend
 from .ollama import GenerationResult, OllamaClient
+from .process_registry import ProcessRegistry
 
 
 class ModelBackends:
@@ -23,23 +19,38 @@ class ModelBackends:
         *,
         ollama_client: OllamaClient | None = None,
         llamacpp_backend: LlamaCppBackend | None = None,
+        kimi_client: KimiClient | None = None,
     ):
         self.config = config
         self.ollama = ollama_client or OllamaClient(config.ollama)
         if llamacpp_backend is not None:
             self.llamacpp = llamacpp_backend
         elif config.llamacpp.enabled:
-            self.llamacpp = LlamaCppBackend(config.llamacpp)
+            self.llamacpp = LlamaCppBackend(
+                config.llamacpp,
+                process_registry=ProcessRegistry(config.execution.process_registry_path),
+            )
         else:
             self.llamacpp = None
+        if kimi_client is not None:
+            self.kimi = kimi_client
+        elif config.kimi.enabled:
+            self.kimi = KimiClient(config.kimi)
+        else:
+            self.kimi = None
 
     def _backend_for(self, model: str):
-        if self.config.backend_for_model(model) == "llamacpp":
+        backend = self.config.backend_for_model(model)
+        if backend == "llamacpp":
             if self.llamacpp is None:
                 raise OllamaError(
                     f"Model {model} requires the llama.cpp backend, which is disabled"
                 )
             return self.llamacpp
+        if backend == "kimi":
+            if self.kimi is None:
+                raise OllamaError(f"Model {model} requires the Kimi backend, which is disabled")
+            return self.kimi
         return self.ollama
 
     def tags(self) -> dict[str, Any]:
@@ -53,9 +64,19 @@ class ModelBackends:
                     "backend": "llamacpp",
                 }
             )
+        if self.kimi is not None:
+            models.append(
+                {
+                    "name": self.config.kimi.model_name,
+                    "model": self.config.kimi.model_name,
+                    "backend": "kimi",
+                    "hosted": True,
+                }
+            )
         return {"models": models}
 
     def ps(self) -> dict[str, Any]:
+        # Hosted calls do not occupy local model memory and never appear here.
         models = list(self.ollama.ps().get("models", []))
         if self.llamacpp is not None:
             models.extend(self.llamacpp.ps().get("models", []))
