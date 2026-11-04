@@ -1,0 +1,100 @@
+{
+  "roles": {
+    "planner": {"model": "deepseek-r1-uncensored-v2:70b", "num_predict": 6144, "temperature": 0.1, "max_turns": 8},
+    "researcher": {"model": "deepseek-r1-uncensored-v2:70b", "num_predict": 6144, "temperature": 0.2, "max_turns": 8},
+    "architect": {"model": "deepseek-r1-uncensored-v2:70b", "num_predict": 6144, "temperature": 0.1, "max_turns": 8},
+    "coder": {"model": "qwen2.5-coder:32b", "num_predict": 4096, "temperature": 0.1, "max_turns": 8},
+    "qa": {"model": "qwen2.5-coder:32b", "num_predict": 4096, "temperature": 0.1, "max_turns": 8},
+    "reviewer": {"model": "deepseek-r1-uncensored-v2:70b", "num_predict": 4096, "temperature": 0.0, "max_turns": 8},
+    "reflector": {"model": "deepseek-r1-uncensored-v2:70b", "num_predict": 6144, "temperature": 0.1, "max_turns": 8}
+  },
+  "ollama": {
+    "base_url": "http://127.0.0.1:11434",
+    "context_length": 16384,
+    "keep_alive": "5m",
+    "load_timeout_seconds": 1800,
+    "request_timeout_seconds": 3600,
+    "dedicated_ollama": true,
+    "offload_on_exit": true,
+    "transport_retries": 2
+  },
+  "llamacpp": {
+    "enabled": true,
+    "model_name": "deepseek-r1-uncensored-v2:70b",
+    "model_path": "/home/ai-agent/models/DeepSeek-R1-Distill-Llama-70B-Uncensored-v2-Unbiased-Reasoner.Q5_K_M.gguf",
+    "server_binary": "llama-server",
+    "host": "127.0.0.1",
+    "port": 8085,
+    "gpu_layers": 23,
+    "context_length": 16384,
+    "cache_type_k": "q8_0",
+    "cache_type_v": "q8_0",
+    "extra_args": [],
+    "startup_timeout_seconds": 1800,
+    "request_timeout_seconds": 3600,
+    "transport_retries": 2
+  },
+  "kimi": {
+    "enabled": false,
+    "base_url": "https://api.kimi.ai/coding/v1",
+    "model_name": "k3.1-pro",
+    "api_key_env": "KIMI_API_KEY",
+    "context_length": 262144,
+    "request_timeout_seconds": 600,
+    "transport_retries": 2,
+    "max_response_bytes": 16000000,
+    "offload_local": true,
+    "approved": false,
+    "allow_dreaming": false
+  },
+  "commands": {
+    "unit_tests": {"argv": ["{python}", "-m", "unittest", "discover", "-s", "tests", "-v"], "timeout_seconds": 120, "resume_policy": "rerun"},
+    "compile_all": {"argv": ["{python}", "-m", "compileall", "-q", "."], "timeout_seconds": 120, "resume_policy": "rerun"}
+  },
+  "web": {
+    "enabled": false,
+    "search_url": "https://html.duckduckgo.com/html/?q={query}",
+    "allowed_domains": [],
+    "timeout_seconds": 30,
+    "max_bytes": 1000000,
+    "max_results": 5
+  },
+  "limits": {
+    "max_tasks": 64,
+    "max_waves": 128,
+    "max_repair_cycles": 2,
+    "max_protocol_retries": 2,
+    "max_file_bytes": 2000000,
+    "max_command_output_bytes": 2000000,
+    "max_tool_result_chars": 12000,
+    "max_list_entries": 500,
+    "safety_reserve_tokens": 512
+  },
+  "execution": {
+    "lock_path": "/run/agentic-ai/executor.lock",
+    "process_registry_path": "/run/agentic-ai/llamacpp.json"
+  },
+  "memory": {
+    "enabled": true,
+    "root": "/var/lib/agentic-ai/memory",
+    "project_id": "default",
+    "classification": "private",
+    "dreaming_enabled": true,
+    "run_roots": ["/var/lib/agentic-ai/runs"],
+    "transcript_retention_days": 30,
+    "max_guidance_documents": 8,
+    "max_search_results": 8
+  },
+  "dream": {
+    "subject_model": "deepseek-r1-uncensored-v2:70b",
+    "curator_model": "deepseek-r1-uncensored-v2:70b",
+    "allow_hosted": false,
+    "max_transcripts": 8,
+    "max_transcript_bytes": 4000000,
+    "max_shards": 8,
+    "max_findings": 64,
+    "max_proposals": 20,
+    "min_distinct_runs": 2,
+    "steering": "Prefer repeated, evidence-backed lessons that improve reliability, deterministic verification, and the small business's recurring workflows."
+  }
+}

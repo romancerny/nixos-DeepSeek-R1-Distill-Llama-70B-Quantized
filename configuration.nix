@@ -1,7 +1,8 @@
 { config, pkgs, lib, ... }:
 
 let
-  activeTheme = "miramare"; 
+  agenticAi = pkgs.callPackage ./agentic-ai/agentic-ai.nix { };
+  activeTheme = "miramare";
 
   themeSchemeMap = {
     "abyss"                  = "abyss";
@@ -214,7 +215,67 @@ in
   #   sudo -u ai-agent wget -O /home/ai-agent/models/DeepSeek-R1-Distill-Llama-70B-Uncensored-v2-Unbiased-Reasoner.Q5_K_M.gguf <model-url>
   systemd.tmpfiles.rules = [
     "d /home/ai-agent/models 0750 ai-agent ai-sandbox - -"
+    "d /home/ai-agent/.cache 0750 ai-agent ai-sandbox - -"
+    "d /run/agentic-ai 0750 ai-agent ai-sandbox - -"
+    "f /run/agentic-ai/executor.lock 0660 ai-agent ai-sandbox - -"
+    "d /var/lib/agentic-ai 0750 root ai-sandbox - -"
+    "d /var/lib/agentic-ai/runs 0750 ai-agent ai-sandbox - -"
+    "d /var/lib/agentic-ai/memory 2750 roman ai-sandbox - -"
+    "d /var/lib/agentic-ai/memory/org 2750 roman ai-sandbox - -"
+    "d /var/lib/agentic-ai/memory/skills 2750 roman ai-sandbox - -"
+    "d /var/lib/agentic-ai/memory/projects 2750 roman ai-sandbox - -"
+    "d /var/lib/agentic-ai/memory/projects/default 2750 roman ai-sandbox - -"
+    "d /var/lib/agentic-ai/memory/projects/default/curated 2750 roman ai-sandbox - -"
+    "d /var/lib/agentic-ai/memory/projects/default/inbox 2750 ai-agent ai-sandbox - -"
+    "d /var/lib/agentic-ai/memory/agents 2750 ai-agent ai-sandbox - -"
+    "d /var/lib/agentic-ai/memory/dreams 2750 ai-agent ai-sandbox - -"
+    "d /var/lib/agentic-ai/memory/dreams/jobs 2750 ai-agent ai-sandbox - -"
+    "d /var/lib/agentic-ai/memory/dreams/proposals 2750 ai-agent ai-sandbox - -"
+    "d /var/lib/agentic-ai/memory/dreams/decisions 2750 roman ai-sandbox - -"
+    "d /var/lib/agentic-ai/memory/redactions 2750 roman ai-sandbox - -"
+    "d /var/lib/agentic-ai/memory/indexes 2770 ai-agent ai-sandbox - -"
   ];
+
+  environment.etc."agentic-ai/config.example.json".source = ./agentic-ai/config.nixos.example.json;
+
+  # Optional oneshot dreaming. No timer is enabled until a human supplies
+  # /etc/agentic-ai/config.json and explicitly enables agentic-ai-dream.timer.
+  systemd.services.agentic-ai-dream = {
+    description = "Agentic AI evidence-backed memory dreaming";
+    after = [ "ollama.service" ];
+    unitConfig.ConditionPathExists = "/etc/agentic-ai/config.json";
+    serviceConfig = {
+      Type = "oneshot";
+      User = "ai-agent";
+      Group = "ai-sandbox";
+      WorkingDirectory = "/var/lib/agentic-ai";
+      ExecStart = "${agenticAi}/bin/agentic-ai dream run --config /etc/agentic-ai/config.json";
+      Environment = "PYTHONDONTWRITEBYTECODE=1";
+      UMask = "0027";
+      NoNewPrivileges = true;
+      PrivateTmp = true;
+      ProtectSystem = "strict";
+      ProtectHome = "read-only";
+      ReadOnlyPaths = "/home/ai-agent/models";
+      ReadWritePaths = "/var/lib/agentic-ai /run/agentic-ai /home/ai-agent/.cache";
+      CapabilityBoundingSet = "";
+      AmbientCapabilities = "";
+      RestrictAddressFamilies = "AF_UNIX AF_INET AF_INET6";
+      LockPersonality = true;
+      RuntimeMaxSec = 86400;
+      TimeoutStartSec = 86400;
+      Nice = 10;
+    };
+  };
+  systemd.timers.agentic-ai-dream = {
+    description = "Nightly optional Agentic AI dreaming";
+    wantedBy = [ ];
+    timerConfig = {
+      OnCalendar = "*-*-* 03:17:00";
+      Persistent = true;
+      RandomizedDelaySec = "30m";
+    };
+  };
 
   # 🐳 VIRTUALISATION LAYER (UPDATED FOR PODMAN)
   virtualisation.libvirtd.enable = true;
@@ -269,16 +330,18 @@ in
     roman = {
       isNormalUser = true;
       description = "Roman System Administrator";
-      extraGroups = [ "networkmanager" "wheel" "video" "libvirtd" "input" "tty" ]; 
+      extraGroups = [ "networkmanager" "wheel" "video" "libvirtd" "input" "tty" "ai-sandbox" ];
       shell = pkgs.zsh;
       initialPassword = "ChangeThisPassword123!"; 
     };
     ai-agent = {
-      isNormalUser = true;
+      isSystemUser = true;
       description = "Isolated AI Execution Worker";
       group = "ai-sandbox";
-      shell = pkgs.zsh;
-      initialPassword = "ChangeThisPassword456!"; 
+      home = "/home/ai-agent";
+      createHome = true;
+      shell = "${pkgs.shadow}/bin/nologin";
+      hashedPassword = "!";
     };
   };
 
@@ -289,6 +352,8 @@ in
     vscode google-chrome gossip discord virt-manager sparrow                    
     gimp beebeep keepassxc tor-browser kdePackages.kate pkgs."aider-chat"
     wireplumber nmap
+    # Local-first multi-agent orchestrator and human memory-review CLI.
+    agenticAi
     system-config-printer
     
     # Telemetry Layer

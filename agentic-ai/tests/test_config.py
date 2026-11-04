@@ -3,6 +3,7 @@ import unittest
 from pathlib import Path
 
 from agentic_ai.config import Config, load_config
+from agentic_ai.documents import MemoryDocument
 
 
 class ConfigurationTests(unittest.TestCase):
@@ -30,6 +31,20 @@ class ConfigurationTests(unittest.TestCase):
         original = Config.default()
         restored = Config.from_dict(json.loads(json.dumps(original.to_dict())))
         self.assertEqual(restored.to_dict(), original.to_dict())
+    def test_nixos_configuration_is_local_and_private_by_default(self):
+        path = Path(__file__).resolve().parents[1] / "config.nixos.example.json"
+        config = load_config(path)
+        self.assertTrue(config.memory.enabled)
+        self.assertTrue(config.memory.dreaming_enabled)
+        self.assertEqual(config.memory.classification, "private")
+        self.assertFalse(config.kimi.enabled)
+        self.assertFalse(config.dream.allow_hosted)
+        self.assertEqual(config.execution.lock_path, "/run/agentic-ai/executor.lock")
+    def test_seed_documents_are_valid(self):
+        seeds = Path(__file__).resolve().parents[1] / "seeds"
+        documents = [MemoryDocument.from_bytes(path.read_bytes()) for path in seeds.glob("*.md")]
+        self.assertEqual(len(documents), 3)
+        self.assertEqual(sum(item.metadata["kind"] == "skill" for item in documents), 2)
 
 
 if __name__ == "__main__":

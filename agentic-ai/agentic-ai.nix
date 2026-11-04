@@ -37,7 +37,7 @@ python3Packages.buildPythonApplication {
   '';
 
   meta = with lib; {
-    description = "File-backed, single-resident-model agentic project orchestration for local Ollama";
+    description = "Local-first multi-agent orchestration with versioned memory and dreaming";
     license = licenses.mit;
     mainProgram = "agentic-ai";
     platforms = platforms.linux;
