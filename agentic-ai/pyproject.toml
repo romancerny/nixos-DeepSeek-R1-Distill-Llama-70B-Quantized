@@ -4,8 +4,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "local-agentic-ai"
-version = "0.1.0"
-description = "File-backed, single-resident-model agentic project orchestration for local Ollama"
+version = "0.2.0"
+description = "Local-first multi-agent orchestration with versioned memory, dreaming, and model hot-swapping"
 readme = "README.md"
 requires-python = ">=3.11"
 license = {text = "MIT"}

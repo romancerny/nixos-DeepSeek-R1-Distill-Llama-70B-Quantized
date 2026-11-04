@@ -17,7 +17,7 @@
 
 python3Packages.buildPythonApplication {
   pname = "local-agentic-ai";
-  version = "0.1.0";
+  version = "0.2.0";
   pyproject = true;
 
   src = ./.;
