@@ -40,3 +40,23 @@ class ToolError(AgenticError):
 
 class RunInterrupted(AgenticError):
     pass
+
+
+class MemoryError(AgenticError):
+    pass
+
+
+class MemoryConflictError(MemoryError):
+    pass
+
+
+class MemoryPermissionError(MemoryError):
+    pass
+
+
+class MemoryNotFoundError(MemoryError):
+    pass
+
+
+class IdentityError(AgenticError):
+    pass

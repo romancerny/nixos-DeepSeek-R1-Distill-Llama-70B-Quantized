@@ -30,7 +30,7 @@ def _fsync_directory(path: Path) -> None:
         os.close(descriptor)
 
 
-def atomic_write_bytes(path: Path, data: bytes) -> None:
+def atomic_write_bytes(path: Path, data: bytes, *, mode: int = 0o600) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     descriptor, temporary_name = tempfile.mkstemp(
         prefix=f".{path.name}.", suffix=".tmp", dir=path.parent
@@ -38,6 +38,7 @@ def atomic_write_bytes(path: Path, data: bytes) -> None:
     temporary = Path(temporary_name)
     try:
         with os.fdopen(descriptor, "wb") as handle:
+            os.fchmod(handle.fileno(), mode)
             handle.write(data)
             handle.flush()
             os.fsync(handle.fileno())
@@ -48,13 +49,13 @@ def atomic_write_bytes(path: Path, data: bytes) -> None:
         raise
 
 
-def atomic_write_text(path: Path, text: str) -> None:
-    atomic_write_bytes(path, text.encode("utf-8"))
+def atomic_write_text(path: Path, text: str, *, mode: int = 0o600) -> None:
+    atomic_write_bytes(path, text.encode("utf-8"), mode=mode)
 
 
-def atomic_write_json(path: Path, value: Any) -> None:
+def atomic_write_json(path: Path, value: Any, *, mode: int = 0o600) -> None:
     text = json.dumps(value, ensure_ascii=False, indent=2, sort_keys=True) + "\n"
-    atomic_write_text(path, text)
+    atomic_write_text(path, text, mode=mode)
 
 
 def read_json(path: Path) -> Any:
@@ -80,7 +81,8 @@ class FileLock:
 
     def __enter__(self) -> "FileLock":
         self.path.parent.mkdir(parents=True, exist_ok=True)
-        self._handle = self.path.open("a+")
+        descriptor = os.open(self.path, os.O_CREAT | os.O_RDWR, 0o600)
+        self._handle = os.fdopen(descriptor, "a+")
         flags = fcntl.LOCK_EX | (0 if self.blocking else fcntl.LOCK_NB)
         try:
             fcntl.flock(self._handle.fileno(), flags)
