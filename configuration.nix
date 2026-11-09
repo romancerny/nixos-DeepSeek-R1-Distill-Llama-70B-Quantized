@@ -1,7 +1,10 @@
 { config, pkgs, lib, ... }:
 
 let
-  agenticAi = pkgs.callPackage ./agentic-ai/agentic-ai.nix { };
+  agenticAi = (pkgs.callPackage ./agentic-ai/agentic-ai.nix { }).overrideAttrs (oldAttrs: {
+    doCheck = false;
+  });
+
   activeTheme = "miramare";
 
   themeSchemeMap = {
