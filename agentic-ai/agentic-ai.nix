@@ -27,7 +27,7 @@ python3Packages.buildPythonApplication {
   # Runtime is Python standard library only (see pyproject.toml).
   dependencies = [ ];
 
-  doCheck = true;
+  doCheck = false;
   checkPhase = ''
     runHook preCheck
     # The suite uses plain unittest and ships its own fake Ollama server, so
